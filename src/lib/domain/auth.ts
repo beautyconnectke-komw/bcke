@@ -37,3 +37,20 @@ export const getAuthContext = cache(async (): Promise<AuthContext> => {
     profile,
   };
 });
+
+export async function getOptionalAuthContext() {
+  const supabase = await createClient();
+  const {
+    data: { user },
+  } = await supabase.auth.getUser();
+
+  if (!user) return null;
+
+  const { data: profile } = await supabase
+    .from("profiles")
+    .select("*")
+    .eq("id", user.id)
+    .maybeSingle();
+
+  return { supabase, userId: user.id, profile };
+}

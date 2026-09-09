@@ -47,7 +47,7 @@ $$;
 
 create table public.profiles (
   id uuid primary key references auth.users(id) on delete cascade,
-  role public.profile_role not null,
+  role public.profile_role,
   display_name text,
   phone text,
   created_at timestamptz not null default now(),
@@ -90,12 +90,14 @@ language plpgsql
 security definer
 set search_path = public
 as $$
+declare
+  internal_operation boolean := coalesce(current_setting('app.beauty_connect_internal', true), '') = 'on';
 begin
-  if tg_op = 'INSERT' and new.role = 'admin' and not public.is_admin(auth.uid()) and not public.is_service_role() then
+  if tg_op = 'INSERT' and new.role = 'admin' and not internal_operation and not public.is_admin(auth.uid()) and not public.is_service_role() then
     raise exception 'Admin profiles must be assigned by an authorized administrator.';
   end if;
 
-  if tg_op = 'UPDATE' and new.role is distinct from old.role and not public.is_admin(auth.uid()) and not public.is_service_role() then
+  if tg_op = 'UPDATE' and new.role is distinct from old.role and not internal_operation and not public.is_admin(auth.uid()) and not public.is_service_role() then
     raise exception 'Profile roles cannot be changed by this user.';
   end if;
 
@@ -130,11 +132,15 @@ create table public.worker_profiles (
   full_name text not null,
   phone text,
   location text,
+  county text,
+  town text,
   profile_photo_path text,
   years_experience integer not null default 0,
+  experience_months integer not null default 0,
   short_bio text,
   work_experience text,
   skills text[] not null default '{}',
+  extra_specialty_ids uuid[] not null default '{}',
   compensation_model public.compensation_model not null default 'negotiable',
   salary_expectation numeric(12,2),
   commission_expectation numeric(5,2),
@@ -148,6 +154,9 @@ create table public.worker_profiles (
   updated_at timestamptz not null default now(),
   constraint worker_profiles_full_name_length check (char_length(full_name) between 2 and 160),
   constraint worker_profiles_years_experience_range check (years_experience between 0 and 80),
+  constraint worker_profiles_experience_months_range check (experience_months between 0 and 11),
+  constraint worker_profiles_county_length check (county is null or char_length(county) between 2 and 80),
+  constraint worker_profiles_town_length check (town is null or char_length(town) between 2 and 120),
   constraint worker_profiles_short_bio_length check (
     short_bio is null or char_length(short_bio) <= 600
   ),
@@ -155,6 +164,7 @@ create table public.worker_profiles (
     work_experience is null or char_length(work_experience) <= 5000
   ),
   constraint worker_profiles_skills_limit check (cardinality(skills) <= 30),
+  constraint worker_profiles_extra_specialties_limit check (cardinality(extra_specialty_ids) <= 12),
   constraint worker_profiles_salary_non_negative check (
     salary_expectation is null or salary_expectation >= 0
   ),
@@ -357,9 +367,14 @@ security definer
 set search_path = public
 as $$
 declare
-  internal_operation boolean := current_setting('app.beauty_connect_internal', true) = 'on';
+  internal_operation boolean := coalesce(current_setting('app.beauty_connect_internal', true), '') = 'on';
 begin
-  perform public.enforce_profile_role(new.profile_id, 'worker');
+  if exists (
+    select 1 from public.profiles profile
+    where profile.id = new.profile_id and profile.role is not null
+  ) then
+    perform public.enforce_profile_role(new.profile_id, 'worker');
+  end if;
 
   if tg_op = 'UPDATE'
     and (
@@ -393,9 +408,14 @@ security definer
 set search_path = public
 as $$
 declare
-  internal_operation boolean := current_setting('app.beauty_connect_internal', true) = 'on';
+  internal_operation boolean := coalesce(current_setting('app.beauty_connect_internal', true), '') = 'on';
 begin
-  perform public.enforce_profile_role(new.profile_id, 'employer');
+  if exists (
+    select 1 from public.profiles profile
+    where profile.id = new.profile_id and profile.role is not null
+  ) then
+    perform public.enforce_profile_role(new.profile_id, 'employer');
+  end if;
 
   if tg_op = 'UPDATE'
     and new.is_suspended is distinct from old.is_suspended
@@ -518,7 +538,19 @@ select
   wp.commission_expectation,
   wp.availability_status,
   wp.created_at,
-  wp.updated_at
+  wp.updated_at,
+  wp.county,
+  wp.town,
+  wp.experience_months,
+  wp.extra_specialty_ids,
+  coalesce(
+    (
+      select array_agg(extra_category.name order by extra_category.name)
+      from public.categories extra_category
+      where extra_category.id = any(wp.extra_specialty_ids)
+    ),
+    '{}'::text[]
+  ) as extra_specialty_names
 from public.worker_profiles wp
 left join public.categories c on c.id = wp.category_id
 where wp.verification_status = 'approved'
@@ -567,7 +599,7 @@ using (id = auth.uid() or public.is_admin(auth.uid()));
 
 create policy "Users can create their own non-admin profile"
 on public.profiles for insert
-with check (id = auth.uid() and role <> 'admin');
+with check (id = auth.uid() and (role is null or role <> 'admin'));
 
 create policy "Users can update their own profile"
 on public.profiles for update
@@ -651,17 +683,30 @@ create policy "Employers can view their own profile and admins can view all"
 on public.employer_profiles for select
 using (profile_id = auth.uid() or public.is_admin(auth.uid()));
 
-create policy "Workers can view employers that requested them"
-on public.employer_profiles for select
-using (
-  exists (
+create or replace function public.worker_can_view_employer_profile(
+  target_employer_profile_id uuid
+)
+returns boolean
+language sql
+stable
+security definer
+set search_path = public
+as $$
+  select exists (
     select 1
     from public.employer_requests request
     join public.worker_profiles worker on worker.id = request.worker_profile_id
-    where request.employer_profile_id = employer_profiles.id
+    where request.employer_profile_id = target_employer_profile_id
       and worker.profile_id = auth.uid()
-  )
-);
+  );
+$$;
+
+revoke execute on function public.worker_can_view_employer_profile(uuid) from public;
+grant execute on function public.worker_can_view_employer_profile(uuid) to authenticated;
+
+create policy "Workers can view employers that requested them"
+on public.employer_profiles for select
+using (public.worker_can_view_employer_profile(id));
 
 create policy "Employers can create their own employer profile"
 on public.employer_profiles for insert
@@ -1498,6 +1543,80 @@ as $$
   );
 $$;
 
+create or replace function public.bc_update_worker_availability(
+  p_availability public.worker_availability_status
+)
+returns void
+language plpgsql
+security definer
+set search_path = public
+as $$
+declare
+  current_user_id uuid := auth.uid();
+begin
+  if current_user_id is null then
+    raise exception 'Authentication is required.';
+  end if;
+
+  if p_availability = 'matched' then
+    raise exception 'Matched status is reserved for a completed handshake.';
+  end if;
+
+  perform set_config('app.beauty_connect_internal', 'on', true);
+  update public.worker_profiles
+  set availability_status = p_availability
+  where profile_id = current_user_id
+    and verification_status = 'approved'
+    and is_suspended = false;
+
+  if not found then
+    raise exception 'Only an active approved worker can update availability.';
+  end if;
+end;
+$$;
+
+create or replace function public.bc_finalize_profile_role(
+  p_role public.profile_role
+)
+returns void
+language plpgsql
+security definer
+set search_path = public
+as $$
+declare
+  current_user_id uuid := auth.uid();
+begin
+  if current_user_id is null or p_role not in ('worker', 'employer') then
+    raise exception 'A valid account role is required.';
+  end if;
+
+  if p_role = 'worker' and not exists (
+    select 1 from public.worker_profiles
+    where profile_id = current_user_id
+      and verification_status = 'pending_review'
+  ) then
+    raise exception 'A worker application must be submitted before locking this role.';
+  end if;
+
+  if p_role = 'employer' and not exists (
+    select 1 from public.employer_profiles
+    where profile_id = current_user_id
+  ) then
+    raise exception 'An employer profile must be created before locking this role.';
+  end if;
+
+  perform set_config('app.beauty_connect_internal', 'on', true);
+  update public.profiles
+  set role = p_role
+  where id = current_user_id
+    and (role is null or role = p_role);
+
+  if not found then
+    raise exception 'This account already has a different role.';
+  end if;
+end;
+$$;
+
 revoke execute on function public.log_admin_activity(text, text, uuid, jsonb) from public;
 revoke execute on function public.create_notification(uuid, public.notification_type, text, text, jsonb) from public;
 revoke execute on function public.bc_create_worker_application(
@@ -1515,6 +1634,8 @@ revoke execute on function public.bc_restore_employer(uuid) from public;
 revoke execute on function public.bc_request_worker(uuid, text) from public;
 revoke execute on function public.bc_respond_to_worker_request(uuid, public.employer_request_status) from public;
 revoke execute on function public.bc_complete_handshake(uuid) from public;
+revoke execute on function public.bc_update_worker_availability(public.worker_availability_status) from public;
+revoke execute on function public.bc_finalize_profile_role(public.profile_role) from public;
 
 grant execute on function public.bc_create_worker_application(
   text, text, text, uuid, text, integer, text, text, text[], public.compensation_model, numeric, numeric
@@ -1531,3 +1652,5 @@ grant execute on function public.bc_restore_employer(uuid) to authenticated;
 grant execute on function public.bc_request_worker(uuid, text) to authenticated;
 grant execute on function public.bc_respond_to_worker_request(uuid, public.employer_request_status) to authenticated;
 grant execute on function public.bc_complete_handshake(uuid) to authenticated;
+grant execute on function public.bc_update_worker_availability(public.worker_availability_status) to authenticated;
+grant execute on function public.bc_finalize_profile_role(public.profile_role) to authenticated;

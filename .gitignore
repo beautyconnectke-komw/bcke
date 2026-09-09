@@ -24,6 +24,8 @@
 .DS_Store
 *.pem
 /manuals/beauty-connect-v1-backend-backbone.txt
+/manuals/beauty-connect-v1-frontend-brief.txt
+/AWSQL.sql
 
 # debug
 npm-debug.log*

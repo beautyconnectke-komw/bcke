@@ -4,6 +4,7 @@ import {
   approveWorker,
   completeHandshake,
   createEmployerProfile,
+  removeEmployerGalleryImage,
   createWorkerApplication,
   markNotificationRead,
   rejectWorker,
@@ -11,9 +12,17 @@ import {
   restoreWorker,
   requestWorker,
   respondToWorkerRequest,
+  saveWorkerDraft,
+  submitWorkerReviewedProfile,
   suspendEmployer,
   suspendWorker,
   updateWorkerProfile,
+  updateWorkerAvailability,
+  createCategory,
+  toggleCategory,
+  addAdminEmail,
+  removeAdminEmail,
+  setFeaturedWorkers,
 } from "@/lib/domain/beauty-connect";
 import type {
   AdminEmployerDecisionInput,
@@ -21,14 +30,59 @@ import type {
   EmployerProfileInput,
   RequestWorkerInput,
   RespondToWorkerRequestInput,
-  UpdateWorkerProfileInput,
+  WorkerContactProfileInput,
+  WorkerReviewedProfileInput,
   WorkerApplicationInput,
+  WorkerApplicationSubmissionInput,
 } from "@/lib/validations/beauty-connect";
+import { createClient } from "@/lib/supabase/server";
+import { DomainError } from "@/lib/domain/errors";
+import type {
+  AdminEmailInput,
+  CategoryInput,
+  FeaturedWorkerIdsInput,
+} from "@/lib/validations/admin";
 
 export async function createWorkerApplicationAction(
-  input: WorkerApplicationInput,
+  input: WorkerApplicationSubmissionInput,
+  portfolioPaths: string[] = [],
 ) {
-  return createWorkerApplication(input);
+  return createWorkerApplication(input, portfolioPaths);
+}
+
+export async function saveWorkerDraftAction(input: WorkerApplicationInput) {
+  return saveWorkerDraft(input);
+}
+
+export async function updateWorkerAvailabilityAction(
+  availability: "available" | "considering",
+) {
+  return updateWorkerAvailability(availability);
+}
+
+export async function createCategoryAction(input: CategoryInput) {
+  return createCategory(input);
+}
+
+export async function toggleCategoryAction(
+  categoryId: string,
+  isActive: boolean,
+) {
+  return toggleCategory(categoryId, isActive);
+}
+
+export async function addAdminEmailAction(input: AdminEmailInput) {
+  return addAdminEmail(input);
+}
+
+export async function removeAdminEmailAction(email: string) {
+  return removeAdminEmail(email);
+}
+
+export async function setFeaturedWorkersAction(
+  workerProfileIds: FeaturedWorkerIdsInput,
+) {
+  return setFeaturedWorkers(workerProfileIds);
 }
 
 export async function approveWorkerAction(input: AdminWorkerDecisionInput) {
@@ -56,13 +110,23 @@ export async function restoreEmployerAction(employerProfileId: string) {
 }
 
 export async function updateWorkerProfileAction(
-  input: UpdateWorkerProfileInput,
+  input: WorkerContactProfileInput,
 ) {
   return updateWorkerProfile(input);
 }
 
+export async function submitWorkerReviewedProfileAction(
+  input: WorkerReviewedProfileInput,
+) {
+  return submitWorkerReviewedProfile(input);
+}
+
 export async function createEmployerProfileAction(input: EmployerProfileInput) {
   return createEmployerProfile(input);
+}
+
+export async function removeEmployerGalleryImageAction(imageId: string) {
+  return removeEmployerGalleryImage(imageId);
 }
 
 export async function requestWorkerAction(input: RequestWorkerInput) {
@@ -81,4 +145,35 @@ export async function completeHandshakeAction(requestId: string) {
 
 export async function markNotificationReadAction(notificationId: string) {
   return markNotificationRead({ notificationId });
+}
+
+export async function setRoleAction(role: "worker" | "employer") {
+  const supabase = await createClient();
+  const {
+    data: { user },
+    error: userError,
+  } = await supabase.auth.getUser();
+
+  if (userError || !user)
+    throw new DomainError("Please sign in before choosing a role.");
+
+  const { data: existing, error: profileError } = await supabase
+    .from("profiles")
+    .select("role")
+    .eq("id", user.id)
+    .maybeSingle();
+
+  if (profileError) throw new DomainError(profileError.message, profileError);
+  if (existing?.role && existing.role !== role) {
+    throw new DomainError("This account already has a different role.");
+  }
+
+  if (!existing) {
+    const { error } = await supabase
+      .from("profiles")
+      .insert({ id: user.id, role: null });
+    if (error) throw new DomainError(error.message, error);
+  }
+
+  return role;
 }

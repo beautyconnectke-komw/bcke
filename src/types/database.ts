@@ -12,7 +12,7 @@ export type Database = {
       profiles: {
         Row: {
           id: string;
-          role: Database["public"]["Enums"]["profile_role"];
+          role: Database["public"]["Enums"]["profile_role"] | null;
           display_name: string | null;
           phone: string | null;
           created_at: string;
@@ -20,7 +20,7 @@ export type Database = {
         };
         Insert: {
           id: string;
-          role: Database["public"]["Enums"]["profile_role"];
+          role?: Database["public"]["Enums"]["profile_role"] | null;
           display_name?: string | null;
           phone?: string | null;
           created_at?: string;
@@ -28,7 +28,7 @@ export type Database = {
         };
         Update: {
           id?: string;
-          role?: Database["public"]["Enums"]["profile_role"];
+          role?: Database["public"]["Enums"]["profile_role"] | null;
           display_name?: string | null;
           phone?: string | null;
           created_at?: string;
@@ -66,6 +66,21 @@ export type Database = {
         };
         Relationships: [];
       };
+      admin_email_whitelist: {
+        Row: {
+          email: string;
+          created_at: string;
+        };
+        Insert: {
+          email: string;
+          created_at?: string;
+        };
+        Update: {
+          email?: string;
+          created_at?: string;
+        };
+        Relationships: [];
+      };
       worker_profiles: {
         Row: {
           id: string;
@@ -74,11 +89,17 @@ export type Database = {
           full_name: string;
           phone: string | null;
           location: string | null;
+          county: string | null;
+          town: string | null;
           profile_photo_path: string | null;
           years_experience: number;
+          experience_months: number;
+          experience_started_at: string | null;
           short_bio: string | null;
           work_experience: string | null;
           skills: string[];
+          extra_specialty_ids: string[];
+          featured_rank: number | null;
           compensation_model: Database["public"]["Enums"]["compensation_model"];
           salary_expectation: number | null;
           commission_expectation: number | null;
@@ -96,11 +117,17 @@ export type Database = {
           full_name: string;
           phone?: string | null;
           location?: string | null;
+          county?: string | null;
+          town?: string | null;
           profile_photo_path?: string | null;
           years_experience?: number;
+          experience_months?: number;
+          experience_started_at?: string | null;
           short_bio?: string | null;
           work_experience?: string | null;
           skills?: string[];
+          extra_specialty_ids?: string[];
+          featured_rank?: number | null;
           compensation_model?: Database["public"]["Enums"]["compensation_model"];
           salary_expectation?: number | null;
           commission_expectation?: number | null;
@@ -117,11 +144,17 @@ export type Database = {
           full_name?: string;
           phone?: string | null;
           location?: string | null;
+          county?: string | null;
+          town?: string | null;
           profile_photo_path?: string | null;
           years_experience?: number;
+          experience_months?: number;
+          experience_started_at?: string | null;
           short_bio?: string | null;
           work_experience?: string | null;
           skills?: string[];
+          extra_specialty_ids?: string[];
+          featured_rank?: number | null;
           compensation_model?: Database["public"]["Enums"]["compensation_model"];
           salary_expectation?: number | null;
           commission_expectation?: number | null;
@@ -218,6 +251,36 @@ export type Database = {
           profile_image_path?: string | null;
           salon_info?: Json;
           is_suspended?: boolean;
+          created_at?: string;
+          updated_at?: string;
+        };
+        Relationships: [];
+      };
+      employer_gallery: {
+        Row: {
+          id: string;
+          employer_profile_id: string;
+          storage_bucket: string;
+          storage_path: string;
+          display_order: number;
+          created_at: string;
+          updated_at: string;
+        };
+        Insert: {
+          id?: string;
+          employer_profile_id: string;
+          storage_bucket?: string;
+          storage_path: string;
+          display_order: number;
+          created_at?: string;
+          updated_at?: string;
+        };
+        Update: {
+          id?: string;
+          employer_profile_id?: string;
+          storage_bucket?: string;
+          storage_path?: string;
+          display_order?: number;
           created_at?: string;
           updated_at?: string;
         };
@@ -382,6 +445,12 @@ export type Database = {
           availability_status: Database["public"]["Enums"]["worker_availability_status"];
           created_at: string;
           updated_at: string;
+          county: string | null;
+          town: string | null;
+          experience_months: number;
+          extra_specialty_ids: string[];
+          extra_specialty_names: string[];
+          featured_rank: number | null;
         };
         Relationships: [];
       };
@@ -389,9 +458,13 @@ export type Database = {
         Row: {
           id: string;
           business_name: string;
+          phone: string | null;
+          business_email: string | null;
           description: string | null;
           location: string | null;
+          address_line: string | null;
           profile_image_path: string | null;
+          salon_info: Json;
           created_at: string;
           updated_at: string;
         };
@@ -445,6 +518,38 @@ export type Database = {
         };
         Returns: string;
       };
+      bc_submit_worker_application: {
+        Args: {
+          p_full_name: string;
+          p_phone?: string | null;
+          p_location?: string | null;
+          p_category_id?: string | null;
+          p_profile_photo_path?: string | null;
+          p_years_experience?: number;
+          p_short_bio?: string | null;
+          p_work_experience?: string | null;
+          p_skills?: string[];
+          p_compensation_model?: Database["public"]["Enums"]["compensation_model"];
+          p_salary_expectation?: number | null;
+          p_commission_expectation?: number | null;
+          p_county: string;
+          p_town: string;
+          p_experience_months?: number;
+          p_extra_specialty_ids?: string[];
+          p_portfolio_paths?: string[];
+        };
+        Returns: string;
+      };
+      bc_submit_worker_reviewed_profile: {
+        Args: {
+          p_worker_profile_id: string;
+          p_category_id: string;
+          p_profile_photo_path?: string | null;
+          p_extra_specialty_ids?: string[];
+          p_portfolio_paths?: string[];
+        };
+        Returns: string;
+      };
       bc_approve_worker: {
         Args: { p_worker_profile_id: string };
         Returns: undefined;
@@ -483,6 +588,30 @@ export type Database = {
       bc_complete_handshake: {
         Args: { p_request_id: string };
         Returns: string;
+      };
+      bc_update_worker_availability: {
+        Args: {
+          p_availability: Database["public"]["Enums"]["worker_availability_status"];
+        };
+        Returns: undefined;
+      };
+      bc_finalize_profile_role: {
+        Args: {
+          p_role: Database["public"]["Enums"]["profile_role"];
+        };
+        Returns: undefined;
+      };
+      bc_add_admin_email_whitelist: {
+        Args: { p_email: string };
+        Returns: string;
+      };
+      bc_remove_admin_email_whitelist: {
+        Args: { p_email: string };
+        Returns: undefined;
+      };
+      bc_set_featured_workers: {
+        Args: { p_worker_profile_ids: string[] };
+        Returns: undefined;
       };
     };
     Enums: {

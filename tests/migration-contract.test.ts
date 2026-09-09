@@ -9,6 +9,24 @@ const migration = readFileSync(
   ),
   "utf8",
 );
+const onboardingMigration = readFileSync(
+  join(
+    process.cwd(),
+    "supabase/migrations/20260909160000_worker_onboarding_and_deferred_roles.sql",
+  ),
+  "utf8",
+);
+const adminControlsMigration = readFileSync(
+  join(process.cwd(), "supabase/migrations/20260909180000_admin_controls.sql"),
+  "utf8",
+);
+const workerAreaMigration = readFileSync(
+  join(
+    process.cwd(),
+    "supabase/migrations/20260909200000_worker_area_fixes.sql",
+  ),
+  "utf8",
+);
 
 describe("Supabase migration contract", () => {
   it("models account role, worker verification, and availability separately", () => {
@@ -87,6 +105,10 @@ describe("Supabase migration contract", () => {
     );
     expect(migration).toContain("Users can view their own notifications");
     expect(migration).toContain("Participants and admins can view handshakes");
+    expect(migration).toContain("worker_can_view_employer_profile");
+    expect(migration).not.toContain(
+      "where request.employer_profile_id = employer_profiles.id",
+    );
     expect(migration).not.toContain(
       "grant select on public.public_employer_profiles",
     );
@@ -102,6 +124,58 @@ describe("Supabase migration contract", () => {
     expect(migration).toContain("'employer-images', 'employer-images', true");
     expect(migration).toContain(
       "'verification-documents', 'verification-documents', false",
+    );
+  });
+
+  it("supports deferred role locking and the worker onboarding fields", () => {
+    expect(migration).toContain("role public.profile_role,");
+    expect(migration).toContain("county text");
+    expect(migration).toContain("experience_months integer not null default 0");
+    expect(migration).toContain(
+      "extra_specialty_ids uuid[] not null default '{}'",
+    );
+    expect(migration).toContain("as extra_specialty_names");
+    expect(migration).toContain(
+      "create or replace function public.bc_finalize_profile_role",
+    );
+    expect(onboardingMigration).toContain("alter column role drop not null");
+    expect(onboardingMigration).toContain("as extra_specialty_names");
+    expect(onboardingMigration).toContain(
+      "create or replace function public.prevent_profile_role_escalation",
+    );
+    expect(onboardingMigration).toContain(
+      "grant execute on function public.bc_finalize_profile_role",
+    );
+  });
+
+  it("protects admin whitelisting and limits featured workers to eight", () => {
+    expect(adminControlsMigration).toContain(
+      "create table if not exists public.admin_email_whitelist",
+    );
+    expect(adminControlsMigration).toContain(
+      "That email must already exist in Supabase Auth users.",
+    );
+    expect(adminControlsMigration).toContain(
+      "add column if not exists featured_rank integer",
+    );
+    expect(adminControlsMigration).toContain(
+      "You can feature at most 8 workers.",
+    );
+    expect(adminControlsMigration).toContain("as extra_specialty_names");
+  });
+
+  it("anchors worker experience and routes reviewed profile changes through moderation", () => {
+    expect(workerAreaMigration).toContain(
+      "add column if not exists experience_started_at timestamptz",
+    );
+    expect(workerAreaMigration).toContain(
+      "create or replace function public.bc_submit_worker_reviewed_profile",
+    );
+    expect(workerAreaMigration).toContain(
+      "This profile change requires admin review.",
+    );
+    expect(workerAreaMigration).toContain(
+      'create policy "Workers can view requested employer gallery"',
     );
   });
 });
