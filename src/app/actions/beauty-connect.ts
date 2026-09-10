@@ -23,6 +23,7 @@ import {
   addAdminEmail,
   removeAdminEmail,
   setFeaturedWorkers,
+  recordWorkerProfileView,
 } from "@/lib/domain/beauty-connect";
 import type {
   AdminEmployerDecisionInput,
@@ -83,6 +84,10 @@ export async function setFeaturedWorkersAction(
   workerProfileIds: FeaturedWorkerIdsInput,
 ) {
   return setFeaturedWorkers(workerProfileIds);
+}
+
+export async function recordWorkerProfileViewAction(workerProfileId: string) {
+  return recordWorkerProfileView(workerProfileId);
 }
 
 export async function approveWorkerAction(input: AdminWorkerDecisionInput) {

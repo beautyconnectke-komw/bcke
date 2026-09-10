@@ -5,7 +5,6 @@ import {
   getWorkerPortfolio,
   getWorkerProfile,
   getCurrentEmployerRequestForWorker,
-  recordWorkerProfileView,
 } from "@/lib/domain/beauty-connect";
 import { env } from "@/config/env";
 import { publicImageUrl } from "@/lib/utils";
@@ -16,6 +15,7 @@ import {
   StatusPill,
 } from "@/components/shared/ui";
 import { RequestButton } from "@/components/employer/request-button";
+import { WorkerProfileViewTracker } from "@/components/employer/worker-profile-view-tracker";
 
 export default async function WorkerDetailPage({
   params,
@@ -39,11 +39,6 @@ export default async function WorkerDetailPage({
           }
         />
       );
-    try {
-      await recordWorkerProfileView(worker.id);
-    } catch {
-      // Analytics must never prevent a worker profile from opening.
-    }
     const photo = publicImageUrl(
       env.supabase.url,
       "worker-profile-images",
@@ -51,6 +46,7 @@ export default async function WorkerDetailPage({
     );
     return (
       <div className="mx-auto max-w-5xl">
+        <WorkerProfileViewTracker workerProfileId={worker.id} />
         <Link
           href="/employer/workers"
           className="inline-flex items-center gap-2 text-sm text-muted-foreground hover:text-foreground"

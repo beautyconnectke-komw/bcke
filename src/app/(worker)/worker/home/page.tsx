@@ -15,6 +15,8 @@ import {
 } from "@/components/shared/ui";
 import { WorkerRequestCard } from "@/components/worker/request-card";
 
+export const dynamic = "force-dynamic";
+
 export default async function WorkerHomePage() {
   try {
     const [profile, requests, analytics] = await Promise.all([
