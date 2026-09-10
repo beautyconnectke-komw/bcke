@@ -109,7 +109,7 @@ export function AppShell({
       </header>
       <nav
         aria-label={`${role} navigation`}
-        className="fixed inset-x-0 bottom-0 z-20 border-t border-border bg-background/95 px-4 py-2 backdrop-blur sm:static sm:mx-auto sm:max-w-7xl sm:border-0 sm:bg-transparent sm:px-8 sm:py-0"
+        className="fixed inset-x-0 bottom-0 z-20 border-t border-border bg-background/95 px-3 py-3 backdrop-blur sm:static sm:mx-auto sm:max-w-7xl sm:border-0 sm:bg-transparent sm:px-8 sm:py-0"
       >
         <div className="mx-auto grid max-w-md grid-cols-3 gap-1 sm:max-w-none sm:flex sm:gap-2 sm:border-b sm:border-border sm:pb-3 sm:pt-3">
           {items.map((item) => {
@@ -136,7 +136,7 @@ export function AppShell({
           })}
         </div>
       </nav>
-      <main className="mx-auto max-w-7xl px-5 pb-28 pt-8 sm:px-8 sm:pb-12">
+      <main className="mx-auto max-w-7xl min-w-0 px-3 pb-32 pt-8 sm:px-8 sm:pb-12">
         {children}
       </main>
     </div>

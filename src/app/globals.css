@@ -138,6 +138,6 @@
 
 @layer components {
   .field {
-    @apply min-h-11 w-full rounded-md border border-border bg-background px-3 font-normal outline-none transition placeholder:text-muted-foreground focus:border-foreground;
+    @apply min-h-11 min-w-0 w-full rounded-md border border-border bg-background px-3 font-normal outline-none transition placeholder:text-muted-foreground focus:border-foreground;
   }
 }

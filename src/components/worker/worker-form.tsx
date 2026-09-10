@@ -287,7 +287,7 @@ export function WorkerForm({
     return (
       <form
         onSubmit={handleSubmit((values) => submit(values, "submit"))}
-        className="grid gap-6"
+        className="grid min-w-0 gap-6"
       >
         <section className="flex items-center gap-4 border border-border p-4 sm:p-6">
           <div className="grid size-24 shrink-0 place-items-center overflow-hidden bg-muted sm:size-28">
@@ -556,7 +556,7 @@ export function WorkerForm({
   return (
     <form
       onSubmit={handleSubmit((values) => submit(values, "submit"))}
-      className="grid gap-8"
+      className="grid min-w-0 gap-8"
     >
       <section className="grid gap-5 border-b border-border pb-8">
         <div>
@@ -838,7 +838,7 @@ function Field({
   children: React.ReactNode;
 }) {
   return (
-    <label className="grid gap-2 text-sm font-medium">
+    <label className="grid min-w-0 gap-2 text-sm font-medium">
       {label}
       {hint ? (
         <span className="font-normal text-muted-foreground">{hint}</span>

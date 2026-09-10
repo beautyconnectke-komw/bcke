@@ -198,7 +198,7 @@ export function EmployerForm({
   }
 
   return (
-    <form onSubmit={handleSubmit(submit)} className="grid gap-6">
+    <form onSubmit={handleSubmit(submit)} className="grid min-w-0 gap-6">
       {mode === "edit" ? (
         <section className="flex items-center gap-4 border border-border p-4 sm:p-6">
           <ProfileImagePreview src={profilePreview} size="large" />
@@ -441,7 +441,7 @@ function Field({
   children: React.ReactNode;
 }) {
   return (
-    <label className="grid gap-2 text-sm font-medium">
+    <label className="grid min-w-0 gap-2 text-sm font-medium">
       {label}
       {hint ? (
         <span className="font-normal text-muted-foreground">{hint}</span>

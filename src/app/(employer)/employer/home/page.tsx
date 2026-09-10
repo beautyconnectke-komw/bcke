@@ -8,25 +8,18 @@ import {
 } from "lucide-react";
 import {
   getCurrentEmployerProfile,
-  getEmployerStatus,
   getFeaturedWorkers,
   type WorkerMarketplaceItem,
 } from "@/lib/domain/beauty-connect";
 import { env } from "@/config/env";
 import { publicImageUrl } from "@/lib/utils";
-import {
-  EmptyState,
-  LinkButton,
-  SetupState,
-  StatCard,
-} from "@/components/shared/ui";
+import { EmptyState, LinkButton, SetupState } from "@/components/shared/ui";
 
 export default async function EmployerHomePage() {
   try {
-    const [profile, workers, status] = await Promise.all([
+    const [profile, workers] = await Promise.all([
       getCurrentEmployerProfile(),
       getFeaturedWorkers(),
-      getEmployerStatus(),
     ]);
 
     if (!profile) {
@@ -70,19 +63,6 @@ export default async function EmployerHomePage() {
                 Find a worker
               </LinkButton>
             </div>
-          </section>
-
-          <section className="grid gap-3 border-b border-[#eadfe7] py-7 sm:grid-cols-2">
-            <StatCard
-              label="Open requests"
-              value={status.pending.length}
-              detail="Waiting for a worker response"
-            />
-            <StatCard
-              label="Agreed connections"
-              value={status.agreed.length}
-              detail="Confirmed handshakes"
-            />
           </section>
 
           <section className="pt-8">

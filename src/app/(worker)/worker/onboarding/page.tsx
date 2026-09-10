@@ -21,7 +21,7 @@ export default async function WorkerOnboardingPage() {
     }
     const portfolio = profile ? await getCurrentWorkerPortfolio() : [];
     return (
-      <div className="mx-auto max-w-4xl">
+      <div className="mx-auto w-full min-w-0 max-w-4xl px-2 sm:px-0">
         <SectionHeading
           eyebrow="Worker onboarding"
           title={
@@ -29,7 +29,7 @@ export default async function WorkerOnboardingPage() {
           }
           description="Your profile stays private until it has been reviewed and approved."
         />
-        <div className="mt-8">
+        <div className="mt-8 min-w-0">
           <WorkerForm
             profile={profile}
             categories={categories}

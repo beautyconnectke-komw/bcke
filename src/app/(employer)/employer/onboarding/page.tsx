@@ -12,7 +12,7 @@ export default async function EmployerOnboardingPage() {
       getCurrentEmployerGallery(),
     ]);
     return (
-      <div className="mx-auto max-w-4xl">
+      <div className="mx-auto w-full min-w-0 max-w-4xl px-2 sm:px-0">
         <SectionHeading
           eyebrow="Employer onboarding"
           title={
@@ -22,7 +22,7 @@ export default async function EmployerOnboardingPage() {
           }
           description="A complete profile helps workers make a confident decision about your request."
         />
-        <div className="mt-8">
+        <div className="mt-8 min-w-0">
           <EmployerForm profile={profile} gallery={gallery} />
         </div>
       </div>

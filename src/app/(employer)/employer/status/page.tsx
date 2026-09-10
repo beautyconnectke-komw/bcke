@@ -1,11 +1,6 @@
 import { getEmployerStatus } from "@/lib/domain/beauty-connect";
 import { EmployerStatusTabs } from "@/components/employer/employer-status-tabs";
-import {
-  LinkButton,
-  SectionHeading,
-  SetupState,
-  StatCard,
-} from "@/components/shared/ui";
+import { LinkButton, SectionHeading, SetupState } from "@/components/shared/ui";
 
 export default async function EmployerStatusPage() {
   try {
@@ -22,18 +17,6 @@ export default async function EmployerStatusPage() {
             </LinkButton>
           }
         />
-        <div className="mt-7 grid grid-cols-2 gap-3">
-          <StatCard
-            label="Pending"
-            value={status.pending.length}
-            detail="Awaiting a worker response"
-          />
-          <StatCard
-            label="Agreed"
-            value={status.agreed.length}
-            detail="Confirmed connections"
-          />
-        </div>
         <EmployerStatusTabs pending={status.pending} agreed={status.agreed} />
       </div>
     );
