@@ -286,6 +286,45 @@ export type Database = {
         };
         Relationships: [];
       };
+      worker_profile_views: {
+        Row: {
+          id: string;
+          worker_profile_id: string;
+          employer_profile_id: string;
+          viewed_at: string;
+        };
+        Insert: {
+          id?: string;
+          worker_profile_id: string;
+          employer_profile_id: string;
+          viewed_at?: string;
+        };
+        Update: {
+          id?: string;
+          worker_profile_id?: string;
+          employer_profile_id?: string;
+          viewed_at?: string;
+        };
+        Relationships: [];
+      };
+      worker_profile_view_cooldowns: {
+        Row: {
+          worker_profile_id: string;
+          employer_profile_id: string;
+          last_viewed_at: string;
+        };
+        Insert: {
+          worker_profile_id: string;
+          employer_profile_id: string;
+          last_viewed_at: string;
+        };
+        Update: {
+          worker_profile_id?: string;
+          employer_profile_id?: string;
+          last_viewed_at?: string;
+        };
+        Relationships: [];
+      };
       employer_requests: {
         Row: {
           id: string;
@@ -549,6 +588,18 @@ export type Database = {
           p_portfolio_paths?: string[];
         };
         Returns: string;
+      };
+      bc_record_worker_profile_view: {
+        Args: { p_worker_profile_id: string };
+        Returns: boolean;
+      };
+      bc_get_worker_profile_analytics: {
+        Args: { p_worker_profile_id: string };
+        Returns: {
+          total_profile_views: number;
+          weekly_profile_views: number;
+          unique_employer_views: number;
+        }[];
       };
       bc_approve_worker: {
         Args: { p_worker_profile_id: string };

@@ -17,7 +17,11 @@ export function WorkerStatusTabs({
 
   return (
     <div className="mt-8 grid gap-5">
-      <div className="grid grid-cols-2 border-b border-border" role="tablist">
+      <div
+        className="grid grid-cols-2 rounded-xl border border-border bg-muted/30 p-1"
+        role="tablist"
+        aria-label="Worker requests"
+      >
         {(
           [
             ["pending", "Pending", pending.length],
@@ -28,12 +32,14 @@ export function WorkerStatusTabs({
             key={value}
             type="button"
             role="tab"
+            id={`worker-status-tab-${value}`}
+            aria-controls="worker-status-panel"
             aria-selected={tab === value}
             onClick={() => setTab(value)}
-            className={`min-h-11 border-b-2 px-3 text-sm font-medium transition ${
+            className={`min-h-10 rounded-lg px-3 text-sm font-medium transition ${
               tab === value
-                ? "border-foreground text-foreground"
-                : "border-transparent text-muted-foreground hover:text-foreground"
+                ? "bg-background text-foreground shadow-sm"
+                : "text-muted-foreground hover:text-foreground"
             }`}
           >
             {label} <span className="ml-1 text-xs">{count}</span>
@@ -45,7 +51,12 @@ export function WorkerStatusTabs({
           ? "Requests waiting for your response or still being considered."
           : "Salons whose requests you accepted and handshook with."}
       </p>
-      <div className="grid gap-4">
+      <div
+        id="worker-status-panel"
+        role="tabpanel"
+        aria-labelledby={`worker-status-tab-${tab}`}
+        className="grid gap-4"
+      >
         {items.map((item) => (
           <WorkerRequestCard key={item.id} request={item} />
         ))}

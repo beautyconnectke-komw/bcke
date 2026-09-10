@@ -83,6 +83,11 @@ export type WorkerStatus = {
   pending: WorkerStatusItem[];
   accepted: WorkerStatusItem[];
 };
+export type WorkerProfileAnalytics = {
+  totalProfileViews: number;
+  weeklyProfileViews: number;
+  uniqueEmployerViews: number;
+};
 
 async function requireUser(supabase: Supabase) {
   const {
@@ -415,6 +420,59 @@ export async function getWorkerProfile(workerProfileId: string) {
   return data;
 }
 
+export async function recordWorkerProfileView(workerProfileId: string) {
+  const parsedWorkerProfileId = uuidSchema.parse(workerProfileId);
+  const supabase = await createClient();
+  const { data, error } = await supabase.rpc("bc_record_worker_profile_view", {
+    p_worker_profile_id: parsedWorkerProfileId,
+  });
+
+  normalizeError(error);
+  return data;
+}
+
+export async function getWorkerProfileAnalytics(): Promise<WorkerProfileAnalytics> {
+  const { supabase, userId } = await getAuthContext();
+  const { data: worker, error: workerError } = await supabase
+    .from("worker_profiles")
+    .select("id")
+    .eq("profile_id", userId)
+    .maybeSingle();
+  normalizeError(workerError);
+
+  if (!worker) {
+    return {
+      totalProfileViews: 0,
+      weeklyProfileViews: 0,
+      uniqueEmployerViews: 0,
+    };
+  }
+
+  let row:
+    | {
+        total_profile_views: number;
+        weekly_profile_views: number;
+        unique_employer_views: number;
+      }
+    | undefined;
+  try {
+    const { data, error } = await supabase.rpc(
+      "bc_get_worker_profile_analytics",
+      { p_worker_profile_id: worker.id },
+    );
+    normalizeError(error);
+    row = data?.[0];
+  } catch {
+    // Analytics are optional until the analytics migration is deployed.
+  }
+
+  return {
+    totalProfileViews: row?.total_profile_views ?? 0,
+    weeklyProfileViews: row?.weekly_profile_views ?? 0,
+    uniqueEmployerViews: row?.unique_employer_views ?? 0,
+  };
+}
+
 export async function getCurrentWorkerProfile(): Promise<WorkerProfile | null> {
   const { supabase, userId } = await getAuthContext();
   const { data, error } = await supabase
@@ -545,6 +603,40 @@ export async function getWorkerRequests(): Promise<
   }));
 }
 
+export async function getCurrentWorkerRequestForEmployer(
+  employerProfileId: string,
+): Promise<WorkerRequestWithEmployer | null> {
+  const parsedEmployerProfileId = uuidSchema.parse(employerProfileId);
+  const { supabase, userId } = await getAuthContext();
+  const { data: worker, error: workerError } = await supabase
+    .from("worker_profiles")
+    .select("id")
+    .eq("profile_id", userId)
+    .maybeSingle();
+  normalizeError(workerError);
+  if (!worker) return null;
+
+  const { data: request, error: requestError } = await supabase
+    .from("employer_requests")
+    .select("*")
+    .eq("worker_profile_id", worker.id)
+    .eq("employer_profile_id", parsedEmployerProfileId)
+    .order("created_at", { ascending: false })
+    .limit(1)
+    .maybeSingle();
+  normalizeError(requestError);
+  if (!request) return null;
+
+  const { data: employer, error: employerError } = await supabase
+    .from("employer_profiles")
+    .select("id, business_name, description, location, profile_image_path")
+    .eq("id", parsedEmployerProfileId)
+    .maybeSingle();
+  normalizeError(employerError);
+
+  return { ...request, employer };
+}
+
 export async function getWorkerStatus(): Promise<WorkerStatus> {
   const requests = await getWorkerRequests();
   const { supabase, userId } = await getAuthContext();
@@ -621,6 +713,31 @@ export async function getEmployerRequests(): Promise<
     ...request,
     worker: workerMap.get(request.worker_profile_id) ?? null,
   }));
+}
+
+export async function getCurrentEmployerRequestForWorker(
+  workerProfileId: string,
+): Promise<EmployerRequest | null> {
+  const parsedWorkerProfileId = uuidSchema.parse(workerProfileId);
+  const { supabase, userId } = await getAuthContext();
+  const { data: employer, error: employerError } = await supabase
+    .from("employer_profiles")
+    .select("id")
+    .eq("profile_id", userId)
+    .maybeSingle();
+  normalizeError(employerError);
+  if (!employer) return null;
+
+  const { data, error } = await supabase
+    .from("employer_requests")
+    .select("*")
+    .eq("employer_profile_id", employer.id)
+    .eq("worker_profile_id", parsedWorkerProfileId)
+    .order("created_at", { ascending: false })
+    .limit(1)
+    .maybeSingle();
+  normalizeError(error);
+  return data;
 }
 
 export async function getEmployerStatus(): Promise<EmployerStatus> {

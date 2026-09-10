@@ -27,6 +27,13 @@ const workerAreaMigration = readFileSync(
   ),
   "utf8",
 );
+const analyticsMigration = readFileSync(
+  join(
+    process.cwd(),
+    "supabase/migrations/20260910100000_worker_profile_analytics.sql",
+  ),
+  "utf8",
+);
 
 describe("Supabase migration contract", () => {
   it("models account role, worker verification, and availability separately", () => {
@@ -176,6 +183,23 @@ describe("Supabase migration contract", () => {
     );
     expect(workerAreaMigration).toContain(
       'create policy "Workers can view requested employer gallery"',
+    );
+  });
+
+  it("records employer profile views atomically with a cooldown", () => {
+    expect(analyticsMigration).toContain(
+      "create table if not exists public.worker_profile_views",
+    );
+    expect(analyticsMigration).toContain(
+      "create table if not exists public.worker_profile_view_cooldowns",
+    );
+    expect(analyticsMigration).toContain(
+      "create or replace function public.bc_record_worker_profile_view",
+    );
+    expect(analyticsMigration).toContain("for update;");
+    expect(analyticsMigration).toContain("interval '24 hours'");
+    expect(analyticsMigration).toContain(
+      "create or replace function public.bc_get_worker_profile_analytics",
     );
   });
 });

@@ -13,7 +13,7 @@ export function Button({
   return (
     <button
       className={cn(
-        "inline-flex min-h-10 items-center justify-center gap-2 rounded-md px-4 text-sm font-medium transition hover:-translate-y-px disabled:cursor-not-allowed disabled:opacity-50",
+        "inline-flex min-h-10 items-center justify-center gap-2 rounded-md px-4 text-sm font-medium transition hover:-translate-y-px focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-foreground/30 focus-visible:ring-offset-2 disabled:cursor-not-allowed disabled:opacity-50",
         variant === "primary" &&
           "bg-foreground text-background hover:bg-foreground/90",
         variant === "secondary" &&
@@ -41,7 +41,7 @@ export function LinkButton({
   return (
     <Link
       className={cn(
-        "inline-flex min-h-10 items-center justify-center gap-2 rounded-md px-4 text-sm font-medium transition hover:-translate-y-px",
+        "inline-flex min-h-10 items-center justify-center gap-2 rounded-md px-4 text-sm font-medium transition hover:-translate-y-px focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-foreground/30 focus-visible:ring-offset-2",
         variant === "primary" &&
           "bg-foreground text-background hover:bg-foreground/90",
         variant === "secondary" &&
@@ -86,6 +86,30 @@ export function SectionHeading({
         ) : null}
       </div>
       {action}
+    </div>
+  );
+}
+
+export function StatCard({
+  label,
+  value,
+  detail,
+}: {
+  label: string;
+  value: number | string;
+  detail?: string;
+}) {
+  return (
+    <div className="rounded-2xl border border-border/80 bg-background p-4 shadow-[0_8px_24px_rgba(31,17,29,0.03)] sm:p-5">
+      <p className="text-[10px] font-semibold uppercase tracking-[0.12em] text-muted-foreground">
+        {label}
+      </p>
+      <p className="mt-2 text-2xl font-semibold tabular-nums tracking-tight sm:text-3xl">
+        {value}
+      </p>
+      {detail ? (
+        <p className="mt-1 text-xs leading-5 text-muted-foreground">{detail}</p>
+      ) : null}
     </div>
   );
 }
@@ -143,13 +167,23 @@ export function StatusPill({
   return (
     <span
       className={cn(
-        "inline-flex w-fit rounded-full px-2.5 py-1 text-xs font-medium",
+        "inline-flex w-fit items-center gap-1.5 rounded-full px-2.5 py-1 text-xs font-medium",
         tone === "neutral" && "bg-muted text-muted-foreground",
         tone === "success" && "bg-emerald-100 text-emerald-800",
         tone === "warning" && "bg-amber-100 text-amber-800",
         tone === "danger" && "bg-red-100 text-red-800",
       )}
     >
+      <span
+        aria-hidden="true"
+        className={cn(
+          "size-1.5 rounded-full",
+          tone === "neutral" && "bg-muted-foreground/60",
+          tone === "success" && "bg-emerald-700",
+          tone === "warning" && "bg-amber-700",
+          tone === "danger" && "bg-red-700",
+        )}
+      />
       {children}
     </span>
   );

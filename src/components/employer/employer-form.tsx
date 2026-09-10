@@ -218,39 +218,49 @@ export function EmployerForm({
         </section>
       ) : null}
 
-      {mode === "onboarding" ? (
-        <section className="grid gap-5 border-b border-border pb-6 sm:grid-cols-2">
-          <Field label="Salon or business name">
-            <input
-              required
-              {...register("businessName")}
-              className="field"
-              placeholder="Your salon"
-            />
-          </Field>
-          <Field label="Contact person">
-            <input
-              {...register("contactPerson")}
-              className="field"
-              placeholder="Your name"
-            />
-          </Field>
-          <Field label="Location">
-            <input
-              {...register("location")}
-              className="field"
-              placeholder="Nairobi, Kenya"
-            />
-          </Field>
-          <Field label="Address">
-            <input
-              {...register("addressLine")}
-              className="field"
-              placeholder="Street or neighbourhood"
-            />
-          </Field>
-        </section>
-      ) : null}
+      <section className="grid gap-5 rounded-2xl border border-[#dfe5dc] bg-[#fbf9fa] p-4 sm:grid-cols-2 sm:p-6">
+        <div className="sm:col-span-2">
+          <h2 className="text-lg font-semibold">
+            {mode === "edit"
+              ? "Business identity and location"
+              : "Salon identity and location"}
+          </h2>
+          <p className="mt-1 text-sm text-muted-foreground">
+            {mode === "edit"
+              ? "These employer details update instantly when you save."
+              : "Start with the details workers need to find and trust your salon."}
+          </p>
+        </div>
+        <Field label="Salon or business name">
+          <input
+            required
+            {...register("businessName")}
+            className="field"
+            placeholder="Your salon"
+          />
+        </Field>
+        <Field label="Contact person">
+          <input
+            {...register("contactPerson")}
+            className="field"
+            placeholder="Your name"
+          />
+        </Field>
+        <Field label="Location">
+          <input
+            {...register("location")}
+            className="field"
+            placeholder="Nairobi, Kenya"
+          />
+        </Field>
+        <Field label="Address">
+          <input
+            {...register("addressLine")}
+            className="field"
+            placeholder="Street or neighbourhood"
+          />
+        </Field>
+      </section>
 
       <section className="grid gap-5 border border-border p-4 sm:p-6">
         <div>

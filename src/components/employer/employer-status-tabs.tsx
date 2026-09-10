@@ -20,7 +20,11 @@ export function EmployerStatusTabs({
 
   return (
     <div className="mt-8 grid gap-5">
-      <div className="grid grid-cols-2 border-b border-border" role="tablist">
+      <div
+        className="grid grid-cols-2 rounded-xl border border-border bg-muted/30 p-1"
+        role="tablist"
+        aria-label="Employer connections"
+      >
         {(
           [
             ["pending", "Pending", pending.length],
@@ -31,12 +35,14 @@ export function EmployerStatusTabs({
             key={value}
             type="button"
             role="tab"
+            id={`employer-status-tab-${value}`}
+            aria-controls="employer-status-panel"
             aria-selected={tab === value}
             onClick={() => setTab(value)}
-            className={`min-h-11 border-b-2 px-3 text-sm font-medium transition ${
+            className={`min-h-10 rounded-lg px-3 text-sm font-medium transition ${
               tab === value
-                ? "border-foreground text-foreground"
-                : "border-transparent text-muted-foreground hover:text-foreground"
+                ? "bg-background text-foreground shadow-sm"
+                : "text-muted-foreground hover:text-foreground"
             }`}
           >
             {label} <span className="ml-1 text-xs">{count}</span>
@@ -48,7 +54,12 @@ export function EmployerStatusTabs({
           ? "Requests awaiting a worker response or being considered."
           : "Requests that became confirmed handshakes."}
       </p>
-      <div className="grid gap-3">
+      <div
+        id="employer-status-panel"
+        role="tabpanel"
+        aria-labelledby={`employer-status-tab-${tab}`}
+        className="grid gap-3"
+      >
         {items.map((item) => (
           <StatusRequestCard key={item.id} item={item} tab={tab} />
         ))}

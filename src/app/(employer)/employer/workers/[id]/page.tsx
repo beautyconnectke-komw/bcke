@@ -1,8 +1,11 @@
 import Link from "next/link";
+import Image from "next/image";
 import { ArrowLeft, MapPin, UserRound } from "lucide-react";
 import {
   getWorkerPortfolio,
   getWorkerProfile,
+  getCurrentEmployerRequestForWorker,
+  recordWorkerProfileView,
 } from "@/lib/domain/beauty-connect";
 import { env } from "@/config/env";
 import { publicImageUrl } from "@/lib/utils";
@@ -21,9 +24,10 @@ export default async function WorkerDetailPage({
 }) {
   try {
     const { id } = await params;
-    const [worker, portfolio] = await Promise.all([
+    const [worker, portfolio, currentRequest] = await Promise.all([
       getWorkerProfile(id),
       getWorkerPortfolio(id),
+      getCurrentEmployerRequestForWorker(id),
     ]);
     if (!worker)
       return (
@@ -35,6 +39,11 @@ export default async function WorkerDetailPage({
           }
         />
       );
+    try {
+      await recordWorkerProfileView(worker.id);
+    } catch {
+      // Analytics must never prevent a worker profile from opening.
+    }
     const photo = publicImageUrl(
       env.supabase.url,
       "worker-profile-images",
@@ -51,9 +60,16 @@ export default async function WorkerDetailPage({
         <div className="mt-6 grid gap-8 lg:grid-cols-[1fr_0.8fr]">
           <section>
             <div className="flex flex-wrap items-start gap-5">
-              <div className="grid size-28 place-items-center overflow-hidden bg-muted sm:size-36">
+              <div className="relative grid size-28 place-items-center overflow-hidden bg-muted sm:size-36">
                 {photo ? (
-                  <img src={photo} alt="" className="size-full object-cover" />
+                  <Image
+                    src={photo}
+                    alt={`${worker.full_name} profile`}
+                    fill
+                    priority
+                    sizes="(min-width: 640px) 144px, 112px"
+                    className="object-cover"
+                  />
                 ) : (
                   <UserRound className="size-9 text-muted-foreground" />
                 )}
@@ -133,18 +149,7 @@ export default async function WorkerDetailPage({
                 {portfolio.length ? (
                   <div className="mt-3 grid grid-cols-2 gap-3">
                     {portfolio.map((item) => (
-                      <img
-                        key={item.id}
-                        src={
-                          publicImageUrl(
-                            env.supabase.url,
-                            item.storage_bucket,
-                            item.storage_path,
-                          ) ?? ""
-                        }
-                        alt={item.alt_text || "Portfolio example"}
-                        className="aspect-square w-full object-cover"
-                      />
+                      <PortfolioImage key={item.id} item={item} />
                     ))}
                   </div>
                 ) : (
@@ -166,12 +171,22 @@ export default async function WorkerDetailPage({
               Send a clear note about the opportunity. They can accept,
               consider, or decline.
             </p>
-            <div className="mt-6">
-              <RequestButton
-                workerId={worker.id}
-                disabled={worker.availability_status === "matched"}
-              />
-            </div>
+            {currentRequest &&
+            ["pending", "considering", "accepted"].includes(
+              currentRequest.status,
+            ) ? (
+              <p className="mt-6 text-sm text-muted-foreground">
+                You already have a {currentRequest.status} request for this
+                worker.
+              </p>
+            ) : (
+              <div className="mt-6">
+                <RequestButton
+                  workerId={worker.id}
+                  disabled={worker.availability_status === "matched"}
+                />
+              </div>
+            )}
             {worker.availability_status === "matched" ? (
               <p className="mt-3 text-sm text-muted-foreground">
                 This worker is already matched and cannot receive new requests.
@@ -184,4 +199,29 @@ export default async function WorkerDetailPage({
   } catch {
     return <SetupState />;
   }
+}
+
+function PortfolioImage({
+  item,
+}: {
+  item: Awaited<ReturnType<typeof getWorkerPortfolio>>[number];
+}) {
+  const image = publicImageUrl(
+    env.supabase.url,
+    item.storage_bucket,
+    item.storage_path,
+  );
+  if (!image) return null;
+
+  return (
+    <div className="relative aspect-square overflow-hidden">
+      <Image
+        src={image}
+        alt={item.alt_text || "Portfolio example"}
+        fill
+        sizes="(min-width: 1024px) 320px, (min-width: 640px) 40vw, 50vw"
+        className="object-cover"
+      />
+    </div>
+  );
 }

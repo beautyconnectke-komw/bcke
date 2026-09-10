@@ -1,12 +1,14 @@
 import Link from "next/link";
 import { ArrowLeft, Mail, MapPin, Phone, UserRound } from "lucide-react";
 import {
+  getCurrentWorkerRequestForEmployer,
   getEmployerGallery,
   getEmployerProfile,
 } from "@/lib/domain/beauty-connect";
 import { env } from "@/config/env";
 import { publicImageUrl } from "@/lib/utils";
 import { EmptyState, LinkButton, SetupState } from "@/components/shared/ui";
+import { WorkerRequestActions } from "@/components/worker/worker-request-actions";
 
 export default async function WorkerEmployerDetailPage({
   params,
@@ -15,9 +17,10 @@ export default async function WorkerEmployerDetailPage({
 }) {
   try {
     const { id } = await params;
-    const [employer, gallery] = await Promise.all([
+    const [employer, gallery, request] = await Promise.all([
       getEmployerProfile(id),
       getEmployerGallery(id),
+      getCurrentWorkerRequestForEmployer(id),
     ]);
     if (!employer) {
       return (
@@ -85,6 +88,20 @@ export default async function WorkerEmployerDetailPage({
               </div>
             </div>
           </div>
+
+          {request &&
+          (request.status === "pending" || request.status === "considering") ? (
+            <div className="mt-8 border-t border-border pt-8">
+              <h2 className="text-lg font-semibold">Respond to this request</h2>
+              <p className="mt-2 text-sm text-muted-foreground">
+                Let the salon know whether you want to accept, consider, or
+                decline this opportunity.
+              </p>
+              <div className="mt-4">
+                <WorkerRequestActions requestId={request.id} />
+              </div>
+            </div>
+          ) : null}
 
           <div className="mt-10 grid gap-8 border-t border-border pt-8">
             <div>

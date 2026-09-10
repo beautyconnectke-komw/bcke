@@ -121,8 +121,15 @@
   * {
     @apply border-border outline-ring/50;
   }
+  :focus-visible {
+    @apply outline-none ring-2 ring-foreground/30 ring-offset-2;
+  }
   body {
     @apply bg-background text-foreground;
+    text-rendering: optimizeLegibility;
+  }
+  ::selection {
+    @apply bg-foreground text-background;
   }
   html {
     @apply font-sans;

@@ -51,7 +51,7 @@ export function AppShell({
 
   return (
     <div className="min-h-svh bg-[#faf9f7] text-foreground">
-      <header className="sticky top-0 z-20 border-b border-border/80 bg-[#faf9f7]/95 backdrop-blur">
+      <header className="sticky top-0 z-30 border-b border-border/80 bg-[#faf9f7]/95 backdrop-blur">
         <div className="mx-auto flex h-16 max-w-7xl items-center justify-between px-5 sm:px-8">
           <Link
             href={role === "worker" ? "/worker/home" : "/employer/home"}
@@ -66,9 +66,14 @@ export function AppShell({
             </span>
           </Link>
           <div className="hidden items-center gap-4 sm:flex">
-            <span className="text-sm text-muted-foreground">
-              {displayName || (role === "worker" ? "Worker" : "Employer")}
-            </span>
+            <div className="text-right">
+              <p className="text-[10px] font-semibold uppercase tracking-[0.12em] text-muted-foreground">
+                {role}
+              </p>
+              <p className="text-sm font-medium">
+                {displayName || (role === "worker" ? "Worker" : "Employer")}
+              </p>
+            </div>
             <button
               aria-label="Sign out"
               title="Sign out"
@@ -89,6 +94,10 @@ export function AppShell({
         </div>
         {open ? (
           <div className="border-t border-border px-5 py-3 sm:hidden">
+            <p className="mb-2 text-xs text-muted-foreground">
+              Signed in as{" "}
+              {displayName || (role === "worker" ? "worker" : "employer")}
+            </p>
             <button
               onClick={signOut}
               className="flex w-full items-center gap-2 py-2 text-sm text-muted-foreground"
@@ -98,11 +107,11 @@ export function AppShell({
           </div>
         ) : null}
       </header>
-      <main className="mx-auto max-w-7xl px-5 pb-28 pt-8 sm:px-8 sm:pb-12">
-        {children}
-      </main>
-      <nav className="fixed inset-x-0 bottom-0 z-20 border-t border-border bg-background/95 px-4 py-2 backdrop-blur sm:static sm:mx-auto sm:max-w-7xl sm:border-0 sm:bg-transparent sm:px-8 sm:py-0">
-        <div className="mx-auto grid max-w-md grid-cols-3 gap-1 sm:max-w-none sm:flex sm:gap-2 sm:border-b sm:border-border sm:pb-3">
+      <nav
+        aria-label={`${role} navigation`}
+        className="fixed inset-x-0 bottom-0 z-20 border-t border-border bg-background/95 px-4 py-2 backdrop-blur sm:static sm:mx-auto sm:max-w-7xl sm:border-0 sm:bg-transparent sm:px-8 sm:py-0"
+      >
+        <div className="mx-auto grid max-w-md grid-cols-3 gap-1 sm:max-w-none sm:flex sm:gap-2 sm:border-b sm:border-border sm:pb-3 sm:pt-3">
           {items.map((item) => {
             const active =
               pathname === item.href || pathname.startsWith(`${item.href}/`);
@@ -111,8 +120,10 @@ export function AppShell({
               <Link
                 key={item.href}
                 href={item.href}
+                aria-current={active ? "page" : undefined}
+                onClick={() => setOpen(false)}
                 className={cn(
-                  "flex items-center justify-center gap-2 rounded-md px-3 py-2 text-xs font-medium sm:text-sm",
+                  "flex items-center justify-center gap-2 rounded-md px-3 py-2 text-xs font-medium transition focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-foreground/30 sm:text-sm",
                   active
                     ? "bg-foreground text-background"
                     : "text-muted-foreground hover:bg-muted hover:text-foreground",
@@ -125,6 +136,9 @@ export function AppShell({
           })}
         </div>
       </nav>
+      <main className="mx-auto max-w-7xl px-5 pb-28 pt-8 sm:px-8 sm:pb-12">
+        {children}
+      </main>
     </div>
   );
 }
