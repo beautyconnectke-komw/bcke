@@ -1,4 +1,5 @@
 import Link from "next/link";
+import Image from "next/image";
 import {
   ArrowRight,
   BadgeCheck,
@@ -55,12 +56,14 @@ export function WorkerProfileView({
         <div className="-mt-14 px-5 pb-6 sm:-mt-16 sm:px-8 sm:pb-8">
           <div className="flex flex-col gap-5 sm:flex-row sm:items-end sm:justify-between">
             <div className="flex min-w-0 items-end gap-4">
-              <div className="grid size-28 shrink-0 place-items-center overflow-hidden rounded-3xl border-4 border-white bg-[#f0edef] text-2xl font-semibold text-[#035715] shadow-sm sm:size-32">
+              <div className="relative grid size-28 shrink-0 place-items-center overflow-hidden rounded-3xl border-4 border-white bg-[#f0edef] text-2xl font-semibold text-[#035715] shadow-sm sm:size-32">
                 {photo ? (
-                  <img
+                  <Image
                     src={photo}
                     alt="Worker profile"
-                    className="size-full object-cover"
+                    fill
+                    sizes="(min-width: 640px) 128px, 112px"
+                    className="object-cover"
                   />
                 ) : (
                   profile.full_name.slice(0, 1).toUpperCase()
@@ -159,12 +162,18 @@ export function WorkerProfileView({
                     item.storage_path,
                   );
                   return image ? (
-                    <img
+                    <div
                       key={item.id}
-                      src={image}
-                      alt={item.alt_text || "Portfolio example"}
-                      className="aspect-square w-full rounded-2xl object-cover"
-                    />
+                      className="relative aspect-square overflow-hidden rounded-2xl"
+                    >
+                      <Image
+                        src={image}
+                        alt={item.alt_text || "Portfolio example"}
+                        fill
+                        sizes="(min-width: 1024px) 280px, (min-width: 640px) 40vw, 50vw"
+                        className="object-cover"
+                      />
+                    </div>
                   ) : null;
                 })}
               </div>

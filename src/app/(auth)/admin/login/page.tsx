@@ -12,7 +12,11 @@ export default function AdminLoginPage() {
         administrator accounts.
       </p>
       <div className="mt-8">
-        <AuthForm mode="login" redirectTo="/admin/dashboard" />
+        <AuthForm
+          mode="login"
+          redirectTo="/admin/dashboard"
+          showGoogle={false}
+        />
       </div>
     </section>
   );

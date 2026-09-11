@@ -1,6 +1,7 @@
 "use client";
 
 import { useRouter } from "next/navigation";
+import Image from "next/image";
 import { useState } from "react";
 import { useForm } from "react-hook-form";
 import {
@@ -344,29 +345,37 @@ export function EmployerForm({
         />
         {savedGallery.length || newGallery.length ? (
           <div className="grid grid-cols-2 gap-3 sm:grid-cols-4">
-            {savedGallery.map((image) => (
-              <div key={image.id} className="relative aspect-square bg-muted">
-                <img
-                  src={
-                    publicImageUrl(
-                      env.supabase.url,
-                      image.storage_bucket,
-                      image.storage_path,
-                    ) ?? undefined
-                  }
-                  alt="Salon"
-                  className="size-full object-cover"
-                />
-                <button
-                  type="button"
-                  disabled={removingGalleryId === image.id}
-                  onClick={() => removeSavedGalleryImage(image.id)}
-                  className="absolute right-1 top-1 bg-foreground px-2 py-1 text-xs text-background disabled:opacity-50"
+            {savedGallery.map((image) => {
+              const src = publicImageUrl(
+                env.supabase.url,
+                image.storage_bucket,
+                image.storage_path,
+              );
+              return (
+                <div
+                  key={image.id}
+                  className="relative aspect-square bg-muted"
                 >
-                  {removingGalleryId === image.id ? "Removing..." : "Remove"}
-                </button>
-              </div>
-            ))}
+                  {src ? (
+                    <Image
+                      src={src}
+                      alt="Salon"
+                      fill
+                      sizes="(min-width: 1024px) 220px, (min-width: 640px) 25vw, 50vw"
+                      className="object-cover"
+                    />
+                  ) : null}
+                  <button
+                    type="button"
+                    disabled={removingGalleryId === image.id}
+                    onClick={() => removeSavedGalleryImage(image.id)}
+                    className="absolute right-1 top-1 bg-foreground px-2 py-1 text-xs text-background disabled:opacity-50"
+                  >
+                    {removingGalleryId === image.id ? "Removing..." : "Remove"}
+                  </button>
+                </div>
+              );
+            })}
             {newGallery.map((image, index) => (
               <div key={image.url} className="relative aspect-square bg-muted">
                 <img

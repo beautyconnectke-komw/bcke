@@ -1,4 +1,5 @@
 import Link from "next/link";
+import Image from "next/image";
 import {
   ArrowRight,
   BriefcaseBusiness,
@@ -41,12 +42,14 @@ export function EmployerProfileView({
         <div className="-mt-14 px-5 pb-6 sm:-mt-16 sm:px-8 sm:pb-8">
           <div className="flex flex-col gap-5 sm:flex-row sm:items-end sm:justify-between">
             <div className="flex min-w-0 items-end gap-4">
-              <div className="grid size-28 shrink-0 place-items-center overflow-hidden rounded-3xl border-4 border-white bg-[#f0edef] text-2xl font-semibold text-[#035715] shadow-sm sm:size-32">
+              <div className="relative grid size-28 shrink-0 place-items-center overflow-hidden rounded-3xl border-4 border-white bg-[#f0edef] text-2xl font-semibold text-[#035715] shadow-sm sm:size-32">
                 {image ? (
-                  <img
+                  <Image
                     src={image}
                     alt={profile.business_name}
-                    className="size-full object-cover"
+                    fill
+                    sizes="(min-width: 640px) 128px, 112px"
+                    className="object-cover"
                   />
                 ) : (
                   profile.business_name.slice(0, 1).toUpperCase()
@@ -123,12 +126,18 @@ export function EmployerProfileView({
                     item.storage_path,
                   );
                   return src ? (
-                    <img
+                    <div
                       key={item.id}
-                      src={src}
-                      alt="Salon"
-                      className="aspect-square w-full rounded-2xl object-cover"
-                    />
+                      className="relative aspect-square overflow-hidden rounded-2xl"
+                    >
+                      <Image
+                        src={src}
+                        alt="Salon"
+                        fill
+                        sizes="(min-width: 1024px) 280px, (min-width: 640px) 40vw, 50vw"
+                        className="object-cover"
+                      />
+                    </div>
                   ) : null;
                 })}
               </div>

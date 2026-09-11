@@ -8,11 +8,11 @@ import {
 
 export default async function WorkerProfilePage() {
   try {
-    const [profile, categories] = await Promise.all([
+    const [profile, categories, portfolio] = await Promise.all([
       getCurrentWorkerProfile(),
       getCategories(),
+      getCurrentWorkerPortfolio(),
     ]);
-    const portfolio = profile ? await getCurrentWorkerPortfolio() : [];
     return profile ? (
       <WorkerProfileView
         profile={profile}

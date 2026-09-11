@@ -11,46 +11,47 @@ type BeautyConnectClient = SupabaseClient<Database, "public">;
 export type AuthContext = {
   supabase: BeautyConnectClient;
   userId: string;
-  profile: Tables<"profiles"> | null;
+  profile: Pick<Tables<"profiles">, "id" | "role" | "display_name"> | null;
 };
+
+const authProfileSelect = "id, role, display_name";
 
 export const getAuthContext = cache(async (): Promise<AuthContext> => {
   const supabase = await createClient();
-  const {
-    data: { user },
-    error: userError,
-  } = await supabase.auth.getUser();
+  const { data, error: claimsError } = await supabase.auth.getClaims();
 
-  if (userError || !user) {
+  const claims = data?.claims;
+  const userId = claims?.sub;
+  if (claimsError || typeof userId !== "string") {
     throw new AuthenticationRequiredError();
   }
 
   const { data: profile } = await supabase
     .from("profiles")
-    .select("*")
-    .eq("id", user.id)
+    .select(authProfileSelect)
+    .eq("id", userId)
     .maybeSingle();
 
   return {
     supabase,
-    userId: user.id,
+    userId,
     profile,
   };
 });
 
 export async function getOptionalAuthContext() {
   const supabase = await createClient();
-  const {
-    data: { user },
-  } = await supabase.auth.getUser();
+  const { data } = await supabase.auth.getClaims();
 
-  if (!user) return null;
+  const claims = data?.claims;
+  const userId = claims?.sub;
+  if (typeof userId !== "string") return null;
 
   const { data: profile } = await supabase
     .from("profiles")
-    .select("*")
-    .eq("id", user.id)
+    .select(authProfileSelect)
+    .eq("id", userId)
     .maybeSingle();
 
-  return { supabase, userId: user.id, profile };
+  return { supabase, userId, profile };
 }

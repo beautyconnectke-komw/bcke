@@ -1,4 +1,5 @@
 import Link from "next/link";
+import Image from "next/image";
 import { MapPin, UserRound } from "lucide-react";
 import type { WorkerMarketplaceItem } from "@/lib/domain/beauty-connect";
 import { env } from "@/config/env";
@@ -15,9 +16,15 @@ export function WorkerCard({ worker }: { worker: WorkerMarketplaceItem }) {
       href={`/employer/workers/${worker.id}`}
       className="group min-w-0 border border-border bg-background p-3 transition hover:-translate-y-1 hover:border-foreground sm:p-4"
     >
-      <div className="aspect-square w-full overflow-hidden bg-muted">
+      <div className="relative aspect-square w-full overflow-hidden bg-muted">
         {image ? (
-          <img src={image} alt="" className="size-full object-cover" />
+          <Image
+            src={image}
+            alt=""
+            fill
+            sizes="(min-width: 1024px) 30vw, (min-width: 640px) 45vw, 50vw"
+            className="object-cover"
+          />
         ) : (
           <div className="grid size-full place-items-center">
             <UserRound className="size-7 text-muted-foreground" />

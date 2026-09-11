@@ -1,4 +1,4 @@
-import { getAdminEmployers } from "@/lib/domain/beauty-connect";
+import { getAdminEmployer } from "@/lib/domain/beauty-connect";
 import {
   EmptyState,
   LinkButton,
@@ -15,7 +15,7 @@ export default async function AdminEmployerDetailPage({
 }) {
   try {
     const { id } = await params;
-    const employer = (await getAdminEmployers()).find((item) => item.id === id);
+    const employer = await getAdminEmployer(id);
     if (!employer)
       return (
         <EmptyState

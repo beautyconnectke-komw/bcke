@@ -120,6 +120,7 @@ export function AppShell({
               <Link
                 key={item.href}
                 href={item.href}
+                prefetch={true}
                 aria-current={active ? "page" : undefined}
                 onClick={() => setOpen(false)}
                 className={cn(

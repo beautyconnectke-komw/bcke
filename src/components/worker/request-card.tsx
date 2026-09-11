@@ -1,6 +1,7 @@
 "use client";
 
 import Link from "next/link";
+import Image from "next/image";
 import { MapPin, UserRound } from "lucide-react";
 import { env } from "@/config/env";
 import type { WorkerRequestWithEmployer } from "@/lib/domain/beauty-connect";
@@ -43,9 +44,15 @@ export function WorkerRequestCard({
             href={`/worker/status/employers/${employer.id}`}
             className="flex min-w-0 items-center gap-3"
           >
-            <div className="grid size-14 shrink-0 place-items-center overflow-hidden rounded-xl bg-[#f3eef1]">
+            <div className="relative grid size-14 shrink-0 place-items-center overflow-hidden rounded-xl bg-[#f3eef1]">
               {image ? (
-                <img src={image} alt="" className="size-full object-cover" />
+                <Image
+                  src={image}
+                  alt=""
+                  fill
+                  sizes="56px"
+                  className="object-cover"
+                />
               ) : (
                 <UserRound className="size-5 text-[#a19aa0]" />
               )}

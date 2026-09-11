@@ -1,6 +1,7 @@
 "use client";
 
 import { useRouter } from "next/navigation";
+import Image from "next/image";
 import { useState } from "react";
 import { useForm, useWatch } from "react-hook-form";
 import {
@@ -405,20 +406,27 @@ export function WorkerForm({
             <p className="text-sm font-medium">Portfolio</p>
             {submittedPortfolio.length ? (
               <div className="mt-3 grid grid-cols-2 gap-3 sm:grid-cols-4">
-                {submittedPortfolio.map((item) => (
-                  <img
-                    key={item.id}
-                    src={
-                      publicImageUrl(
-                        env.supabase.url,
-                        item.storage_bucket,
-                        item.storage_path,
-                      ) ?? ""
-                    }
-                    alt={item.alt_text || "Portfolio example"}
-                    className="aspect-square w-full object-cover"
-                  />
-                ))}
+                {submittedPortfolio.map((item) => {
+                  const image = publicImageUrl(
+                    env.supabase.url,
+                    item.storage_bucket,
+                    item.storage_path,
+                  );
+                  return image ? (
+                    <div
+                      key={item.id}
+                      className="relative aspect-square overflow-hidden"
+                    >
+                      <Image
+                        src={image}
+                        alt={item.alt_text || "Portfolio example"}
+                        fill
+                        sizes="(min-width: 1024px) 220px, (min-width: 640px) 25vw, 50vw"
+                        className="object-cover"
+                      />
+                    </div>
+                  ) : null;
+                })}
               </div>
             ) : (
               <p className="mt-2 text-sm text-muted-foreground">

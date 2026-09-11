@@ -1,4 +1,6 @@
 import Link from "next/link";
+import Image from "next/image";
+import { Suspense } from "react";
 import {
   ArrowRight,
   CheckCircle2,
@@ -17,10 +19,11 @@ import { EmptyState, LinkButton, SetupState } from "@/components/shared/ui";
 
 export default async function EmployerHomePage() {
   try {
-    const [profile, workers] = await Promise.all([
-      getCurrentEmployerProfile(),
-      getFeaturedWorkers(),
-    ]);
+    // Start the independent marketplace request before waiting for the
+    // profile. The profile header can stream as soon as auth/profile data is
+    // ready while featured cards continue loading in the background.
+    const workersPromise = getFeaturedWorkers();
+    const profile = await getCurrentEmployerProfile();
 
     if (!profile) {
       return (
@@ -65,41 +68,9 @@ export default async function EmployerHomePage() {
             </div>
           </section>
 
-          <section className="pt-8">
-            <div className="flex items-end justify-between gap-4">
-              <div>
-                <p className="text-xs font-semibold uppercase tracking-[0.14em] text-[#7a7478]">
-                  Curated for you
-                </p>
-                <h2 className="mt-1 text-lg font-semibold tracking-[-0.02em]">
-                  Featured workers
-                </h2>
-              </div>
-              <Link
-                href="/employer/workers"
-                className="inline-flex items-center gap-1 text-xs font-semibold text-[#035715] underline-offset-4 hover:underline"
-              >
-                See all
-                <ArrowRight className="size-3.5" />
-              </Link>
-            </div>
-            <div className="mt-4 grid grid-cols-2 gap-3 sm:grid-cols-3 sm:gap-4 lg:grid-cols-4">
-              {workers.slice(0, 8).map((worker) => (
-                <FeaturedWorkerCard key={worker.id} worker={worker} />
-              ))}
-              {workers.length === 0 ? (
-                <div className="col-span-2 rounded-2xl border border-dashed border-[#ded4dc] bg-white px-6 py-10 text-center sm:col-span-3 lg:col-span-4">
-                  <h3 className="text-base font-semibold">
-                    No featured workers yet
-                  </h3>
-                  <p className="mx-auto mt-2 max-w-md text-sm leading-6 text-[#7a7478]">
-                    The Beauty Connect team will highlight approved workers
-                    here.
-                  </p>
-                </div>
-              ) : null}
-            </div>
-          </section>
+          <Suspense fallback={<FeaturedWorkersFallback />}>
+            <FeaturedWorkersSection workersPromise={workersPromise} />
+          </Suspense>
 
           <section className="mt-10 border-t border-[#eadfe7] pt-8">
             <div className="flex items-end justify-between gap-4">
@@ -140,6 +111,76 @@ export default async function EmployerHomePage() {
   }
 }
 
+async function FeaturedWorkersSection({
+  workersPromise,
+}: {
+  workersPromise: Promise<WorkerMarketplaceItem[]>;
+}) {
+  let workers: WorkerMarketplaceItem[];
+  try {
+    workers = await workersPromise;
+  } catch {
+    return null;
+  }
+
+  return (
+    <section className="pt-8">
+      <div className="flex items-end justify-between gap-4">
+        <div>
+          <p className="text-xs font-semibold uppercase tracking-[0.14em] text-[#7a7478]">
+            Curated for you
+          </p>
+          <h2 className="mt-1 text-lg font-semibold tracking-[-0.02em]">
+            Featured workers
+          </h2>
+        </div>
+        <Link
+          href="/employer/workers"
+          className="inline-flex items-center gap-1 text-xs font-semibold text-[#035715] underline-offset-4 hover:underline"
+        >
+          See all
+          <ArrowRight className="size-3.5" />
+        </Link>
+      </div>
+      <div className="mt-4 grid grid-cols-2 gap-3 sm:grid-cols-3 sm:gap-4 lg:grid-cols-4">
+        {workers.slice(0, 8).map((worker) => (
+          <FeaturedWorkerCard key={worker.id} worker={worker} />
+        ))}
+        {workers.length === 0 ? (
+          <div className="col-span-2 rounded-2xl border border-dashed border-[#ded4dc] bg-white px-6 py-10 text-center sm:col-span-3 lg:col-span-4">
+            <h3 className="text-base font-semibold">No featured workers yet</h3>
+            <p className="mx-auto mt-2 max-w-md text-sm leading-6 text-[#7a7478]">
+              The Beauty Connect team will highlight approved workers here.
+            </p>
+          </div>
+        ) : null}
+      </div>
+    </section>
+  );
+}
+
+function FeaturedWorkersFallback() {
+  return (
+    <section className="pt-8" aria-label="Loading featured workers">
+      <div className="flex items-end justify-between gap-4">
+        <div>
+          <div className="h-3 w-28 animate-pulse rounded bg-[#eadfe7]" />
+          <div className="mt-2 h-6 w-40 animate-pulse rounded bg-[#eadfe7]" />
+        </div>
+        <div className="h-4 w-14 animate-pulse rounded bg-[#eadfe7]" />
+      </div>
+      <div className="mt-4 grid grid-cols-2 gap-3 sm:grid-cols-3 sm:gap-4 lg:grid-cols-4">
+        {Array.from({ length: 4 }, (_, index) => (
+          <div
+            key={index}
+            className="aspect-[0.86] animate-pulse rounded-xl bg-[#f3eef1]"
+          />
+        ))}
+      </div>
+    </section>
+  );
+}
+
 function FeaturedWorkerCard({ worker }: { worker: WorkerMarketplaceItem }) {
   const image = publicImageUrl(
     env.supabase.url,
@@ -156,12 +197,14 @@ function FeaturedWorkerCard({ worker }: { worker: WorkerMarketplaceItem }) {
       href={`/employer/workers/${worker.id}`}
       className="group min-w-0 rounded-2xl border border-[#eee5eb] bg-white p-2.5 shadow-[0_4px_18px_rgba(31,17,29,0.03)] transition hover:-translate-y-0.5 hover:border-[#b9ceb9] sm:p-3"
     >
-      <div className="aspect-[0.86] overflow-hidden rounded-xl bg-[#f3eef1]">
+      <div className="relative aspect-[0.86] overflow-hidden rounded-xl bg-[#f3eef1]">
         {image ? (
-          <img
+          <Image
             src={image}
             alt={`${worker.full_name} profile`}
-            className="size-full object-cover transition duration-300 group-hover:scale-[1.03]"
+            fill
+            sizes="(min-width: 1024px) 220px, (min-width: 640px) 30vw, 45vw"
+            className="object-cover transition duration-300 group-hover:scale-[1.03]"
           />
         ) : (
           <div className="grid size-full place-items-center">

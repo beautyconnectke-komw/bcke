@@ -12,6 +12,10 @@ const supabaseOrigin = (() => {
 
 const nextConfig: NextConfig = {
   images: {
+    // Prefer modern formats for Supabase-hosted photos while keeping the
+    // existing public storage URL as the source of truth.
+    formats: ["image/avif", "image/webp"],
+    minimumCacheTTL: 3600,
     remotePatterns: supabaseOrigin
       ? [
           {

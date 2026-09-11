@@ -9,11 +9,11 @@ import {
 
 export default async function WorkerEditProfilePage() {
   try {
-    const [profile, categories] = await Promise.all([
+    const [profile, categories, portfolio] = await Promise.all([
       getCurrentWorkerProfile(),
       getCategories(),
+      getCurrentWorkerPortfolio(),
     ]);
-    const portfolio = profile ? await getCurrentWorkerPortfolio() : [];
     if (!profile) return <SetupState />;
     return (
       <div className="mx-auto max-w-4xl">

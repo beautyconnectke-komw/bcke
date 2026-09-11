@@ -1,6 +1,7 @@
 import "server-only";
 
 import type { SupabaseClient } from "@supabase/supabase-js";
+import { cache } from "react";
 import { createClient } from "@/lib/supabase/server";
 import { getAuthContext } from "@/lib/domain/auth";
 import {
@@ -40,8 +41,50 @@ import { AuthenticationRequiredError, DomainError } from "./errors";
 
 type Supabase = SupabaseClient<Database, "public">;
 
-export type WorkerMarketplaceItem =
+const marketplaceSelect =
+  "id, full_name, location, profile_photo_path, category_id, category_name, category_slug, years_experience, availability_status, created_at, updated_at, county, town, experience_months";
+const workerProfileSelect =
+  "id, full_name, location, profile_photo_path, category_id, category_name, category_slug, years_experience, short_bio, work_experience, skills, compensation_model, salary_expectation, commission_expectation, availability_status, created_at, updated_at, county, town, experience_months, extra_specialty_ids, extra_specialty_names, featured_rank";
+const employerRequestSelect =
+  "id, employer_profile_id, worker_profile_id, status, message, responded_at, expires_at, created_at, updated_at";
+const handshakeSelect =
+  "id, employer_profile_id, worker_profile_id, request_id, status, matched_at, completed_at, cancelled_at, created_at, updated_at";
+const notificationSelect =
+  "id, profile_id, type, title, body, data, read_at, created_at";
+const workerProfileRowSelect =
+  "id, profile_id, category_id, full_name, phone, location, county, town, profile_photo_path, years_experience, experience_months, experience_started_at, short_bio, work_experience, skills, extra_specialty_ids, featured_rank, compensation_model, salary_expectation, commission_expectation, verification_status, availability_status, is_suspended, public_visible, created_at, updated_at";
+const employerProfileSelect =
+  "id, profile_id, business_name, contact_person, phone, business_email, description, location, address_line, latitude, longitude, profile_image_path, salon_info, is_suspended, created_at, updated_at";
+const portfolioSelect =
+  "id, worker_profile_id, storage_bucket, storage_path, display_order, alt_text, created_at, updated_at";
+const publicPortfolioSelect = portfolioSelect;
+const gallerySelect =
+  "id, employer_profile_id, storage_bucket, storage_path, display_order, created_at, updated_at";
+const handshakeRowSelect =
+  "id, employer_profile_id, worker_profile_id, request_id, status, matched_at, completed_at, cancelled_at, created_at, updated_at";
+const categorySelect =
+  "id, name, slug, is_active, display_order, created_at, updated_at";
+const adminEmailSelect = "email, created_at";
+
+type WorkerMarketplaceRow =
   Database["public"]["Views"]["public_worker_profiles"]["Row"];
+export type WorkerMarketplaceItem = Pick<
+  WorkerMarketplaceRow,
+  | "id"
+  | "full_name"
+  | "location"
+  | "profile_photo_path"
+  | "category_id"
+  | "category_name"
+  | "category_slug"
+  | "years_experience"
+  | "availability_status"
+  | "created_at"
+  | "updated_at"
+  | "county"
+  | "town"
+  | "experience_months"
+>;
 export type PublicEmployerProfile =
   Database["public"]["Views"]["public_employer_profiles"]["Row"];
 export type Notification = Tables<"notifications">;
@@ -89,17 +132,44 @@ export type WorkerProfileAnalytics = {
   uniqueEmployerViews: number;
 };
 
-async function requireUser(supabase: Supabase) {
-  const {
-    data: { user },
-    error,
-  } = await supabase.auth.getUser();
+const getCurrentWorkerProfileForContext = cache(
+  async (supabase: Supabase, userId: string): Promise<WorkerProfile | null> => {
+    const { data, error } = await supabase
+      .from("worker_profiles")
+      .select(workerProfileRowSelect)
+      .eq("profile_id", userId)
+      .maybeSingle();
 
-  if (error || !user) {
+    normalizeError(error);
+    return data;
+  },
+);
+
+const getCurrentEmployerProfileForContext = cache(
+  async (
+    supabase: Supabase,
+    userId: string,
+  ): Promise<EmployerProfile | null> => {
+    const { data, error } = await supabase
+      .from("employer_profiles")
+      .select(employerProfileSelect)
+      .eq("profile_id", userId)
+      .maybeSingle();
+
+    normalizeError(error);
+    return data;
+  },
+);
+
+async function requireUser(supabase: Supabase) {
+  const { data, error } = await supabase.auth.getClaims();
+
+  const userId = data?.claims?.sub;
+  if (error || typeof userId !== "string") {
     throw new AuthenticationRequiredError();
   }
 
-  return user;
+  return { id: userId };
 }
 
 function normalizeError(error: { message: string } | null) {
@@ -341,12 +411,21 @@ export async function removeEmployerGalleryImage(imageId: string) {
 export async function requestWorker(input: RequestWorkerInput) {
   const parsed = requestWorkerSchema.parse(input);
   const supabase = await createClient();
-  await requireUser(supabase);
 
+  // bc_request_worker validates auth, employer ownership, worker state, and
+  // the active-pair constraint inside the same database transaction. Avoid a
+  // separate auth.getUser() round trip on this hot path.
   const { data, error } = await supabase.rpc("bc_request_worker", {
     p_worker_profile_id: parsed.workerProfileId,
     p_message: parsed.message ?? null,
   });
+
+  if (
+    error?.code === "23505" &&
+    error.message.includes("employer_requests_one_active_pair")
+  ) {
+    throw new DomainError("Worker request already exists.", error);
+  }
 
   normalizeError(error);
   return data;
@@ -383,7 +462,7 @@ export async function getWorkerMarketplace(
 
   let query = supabase
     .from("public_worker_profiles")
-    .select("*")
+    .select(marketplaceSelect)
     .order("created_at", { ascending: false });
 
   if (parsed.categoryId) {
@@ -403,7 +482,7 @@ export async function getWorkerMarketplace(
     query = query.gte("years_experience", parsed.minimumYearsExperience);
   }
 
-  const { data, error } = await query;
+  const { data, error } = await query.limit(48);
   normalizeError(error);
   return data ?? [];
 }
@@ -412,7 +491,7 @@ export async function getWorkerProfile(workerProfileId: string) {
   const supabase = await createClient();
   const { data, error } = await supabase
     .from("public_worker_profiles")
-    .select("*")
+    .select(workerProfileSelect)
     .eq("id", workerProfileId)
     .maybeSingle();
 
@@ -433,12 +512,7 @@ export async function recordWorkerProfileView(workerProfileId: string) {
 
 export async function getWorkerProfileAnalytics(): Promise<WorkerProfileAnalytics> {
   const { supabase, userId } = await getAuthContext();
-  const { data: worker, error: workerError } = await supabase
-    .from("worker_profiles")
-    .select("id")
-    .eq("profile_id", userId)
-    .maybeSingle();
-  normalizeError(workerError);
+  const worker = await getCurrentWorkerProfileForContext(supabase, userId);
 
   if (!worker) {
     return {
@@ -475,89 +549,68 @@ export async function getWorkerProfileAnalytics(): Promise<WorkerProfileAnalytic
 
 export async function getCurrentWorkerProfile(): Promise<WorkerProfile | null> {
   const { supabase, userId } = await getAuthContext();
-  const { data, error } = await supabase
-    .from("worker_profiles")
-    .select("*")
-    .eq("profile_id", userId)
-    .maybeSingle();
-
-  normalizeError(error);
-  return data;
+  return getCurrentWorkerProfileForContext(supabase, userId);
 }
 
 export async function getCurrentWorkerPortfolio() {
   const { supabase, userId } = await getAuthContext();
-  const { data: worker, error: workerError } = await supabase
-    .from("worker_profiles")
-    .select("id")
-    .eq("profile_id", userId)
-    .maybeSingle();
-  normalizeError(workerError);
+  const worker = await getCurrentWorkerProfileForContext(supabase, userId);
   if (!worker) return [];
 
   const { data, error } = await supabase
     .from("worker_portfolio")
-    .select("*")
+    .select(portfolioSelect)
     .eq("worker_profile_id", worker.id)
-    .order("display_order");
+    .order("display_order")
+    .limit(50);
   normalizeError(error);
   return data ?? [];
 }
 
 export async function getCurrentEmployerProfile(): Promise<EmployerProfile | null> {
   const { supabase, userId } = await getAuthContext();
-  const { data, error } = await supabase
-    .from("employer_profiles")
-    .select("*")
-    .eq("profile_id", userId)
-    .maybeSingle();
-
-  normalizeError(error);
-  return data;
+  return getCurrentEmployerProfileForContext(supabase, userId);
 }
 
 export async function getCurrentEmployerGallery(): Promise<
   Tables<"employer_gallery">[]
 > {
   const { supabase, userId } = await getAuthContext();
-  const { data: employer, error: employerError } = await supabase
-    .from("employer_profiles")
-    .select("id")
-    .eq("profile_id", userId)
-    .maybeSingle();
-
-  normalizeError(employerError);
+  const employer = await getCurrentEmployerProfileForContext(supabase, userId);
   if (!employer) return [];
 
   const { data, error } = await supabase
     .from("employer_gallery")
-    .select("*")
+    .select(gallerySelect)
     .eq("employer_profile_id", employer.id)
-    .order("display_order");
+    .order("display_order")
+    .limit(50);
   normalizeError(error);
   return data ?? [];
 }
 
-export async function getCategories(): Promise<Category[]> {
+export const getCategories = cache(async (): Promise<Category[]> => {
   const supabase = await createClient();
   const { data, error } = await supabase
     .from("categories")
-    .select("*")
+    .select(categorySelect)
     .eq("is_active", true)
     .order("display_order")
-    .order("name");
+    .order("name")
+    .limit(200);
 
   normalizeError(error);
   return data ?? [];
-}
+});
 
 export async function getWorkerPortfolio(workerProfileId: string) {
   const supabase = await createClient();
   const { data, error } = await supabase
     .from("public_worker_portfolio")
-    .select("*")
+    .select(publicPortfolioSelect)
     .eq("worker_profile_id", workerProfileId)
-    .order("display_order");
+    .order("display_order")
+    .limit(50);
 
   normalizeError(error);
   return data ?? [];
@@ -567,20 +620,22 @@ export async function getWorkerRequests(): Promise<
   WorkerRequestWithEmployer[]
 > {
   const { supabase, userId } = await getAuthContext();
-  const { data: worker, error: workerError } = await supabase
-    .from("worker_profiles")
-    .select("id")
-    .eq("profile_id", userId)
-    .maybeSingle();
-
-  normalizeError(workerError);
+  const worker = await getCurrentWorkerProfileForContext(supabase, userId);
   if (!worker) return [];
 
+  return getWorkerRequestsForProfile(supabase, worker.id);
+}
+
+async function getWorkerRequestsForProfile(
+  supabase: Supabase,
+  workerProfileId: string,
+): Promise<WorkerRequestWithEmployer[]> {
   const { data: requests, error } = await supabase
     .from("employer_requests")
-    .select("*")
-    .eq("worker_profile_id", worker.id)
-    .order("created_at", { ascending: false });
+    .select(employerRequestSelect)
+    .eq("worker_profile_id", workerProfileId)
+    .order("created_at", { ascending: false })
+    .limit(50);
 
   normalizeError(error);
   if (!requests?.length) return [];
@@ -618,7 +673,7 @@ export async function getCurrentWorkerRequestForEmployer(
 
   const { data: request, error: requestError } = await supabase
     .from("employer_requests")
-    .select("*")
+    .select(employerRequestSelect)
     .eq("worker_profile_id", worker.id)
     .eq("employer_profile_id", parsedEmployerProfileId)
     .order("created_at", { ascending: false })
@@ -638,26 +693,24 @@ export async function getCurrentWorkerRequestForEmployer(
 }
 
 export async function getWorkerStatus(): Promise<WorkerStatus> {
-  const requests = await getWorkerRequests();
   const { supabase, userId } = await getAuthContext();
-  const { data: worker, error: workerError } = await supabase
-    .from("worker_profiles")
-    .select("id")
-    .eq("profile_id", userId)
-    .maybeSingle();
-  normalizeError(workerError);
+  const worker = await getCurrentWorkerProfileForContext(supabase, userId);
   if (!worker) return { pending: [], accepted: [] };
 
-  const { data: handshakes, error: handshakeError } = await supabase
-    .from("handshakes")
-    .select("*")
-    .eq("worker_profile_id", worker.id)
-    .in("status", ["matched", "completed"])
-    .order("created_at", { ascending: false });
-  normalizeError(handshakeError);
+  const [requests, handshakeResult] = await Promise.all([
+    getWorkerRequestsForProfile(supabase, worker.id),
+    supabase
+      .from("handshakes")
+      .select(handshakeSelect)
+      .eq("worker_profile_id", worker.id)
+      .in("status", ["matched", "completed"])
+      .order("created_at", { ascending: false })
+      .limit(50),
+  ]);
+  normalizeError(handshakeResult.error);
 
   const handshakeByRequestId = new Map(
-    (handshakes ?? [])
+    (handshakeResult.data ?? [])
       .filter((handshake) => handshake.request_id)
       .map((handshake) => [handshake.request_id, handshake]),
   );
@@ -679,20 +732,22 @@ export async function getEmployerRequests(): Promise<
   EmployerRequestWithWorker[]
 > {
   const { supabase, userId } = await getAuthContext();
-  const { data: employer, error: employerError } = await supabase
-    .from("employer_profiles")
-    .select("id")
-    .eq("profile_id", userId)
-    .maybeSingle();
-
-  normalizeError(employerError);
+  const employer = await getCurrentEmployerProfileForContext(supabase, userId);
   if (!employer) return [];
 
+  return getEmployerRequestsForProfile(supabase, employer.id);
+}
+
+async function getEmployerRequestsForProfile(
+  supabase: Supabase,
+  employerProfileId: string,
+): Promise<EmployerRequestWithWorker[]> {
   const { data: requests, error } = await supabase
     .from("employer_requests")
-    .select("*")
-    .eq("employer_profile_id", employer.id)
-    .order("created_at", { ascending: false });
+    .select(employerRequestSelect)
+    .eq("employer_profile_id", employerProfileId)
+    .order("created_at", { ascending: false })
+    .limit(50);
 
   normalizeError(error);
   if (!requests?.length) return [];
@@ -702,7 +757,7 @@ export async function getEmployerRequests(): Promise<
   ];
   const { data: workers, error: workerError } = await supabase
     .from("public_worker_profiles")
-    .select("*")
+    .select(marketplaceSelect)
     .in("id", workerIds);
 
   normalizeError(workerError);
@@ -720,17 +775,12 @@ export async function getCurrentEmployerRequestForWorker(
 ): Promise<EmployerRequest | null> {
   const parsedWorkerProfileId = uuidSchema.parse(workerProfileId);
   const { supabase, userId } = await getAuthContext();
-  const { data: employer, error: employerError } = await supabase
-    .from("employer_profiles")
-    .select("id")
-    .eq("profile_id", userId)
-    .maybeSingle();
-  normalizeError(employerError);
+  const employer = await getCurrentEmployerProfileForContext(supabase, userId);
   if (!employer) return null;
 
   const { data, error } = await supabase
     .from("employer_requests")
-    .select("*")
+    .select(employerRequestSelect)
     .eq("employer_profile_id", employer.id)
     .eq("worker_profile_id", parsedWorkerProfileId)
     .order("created_at", { ascending: false })
@@ -741,27 +791,24 @@ export async function getCurrentEmployerRequestForWorker(
 }
 
 export async function getEmployerStatus(): Promise<EmployerStatus> {
-  const requests = await getEmployerRequests();
   const { supabase, userId } = await getAuthContext();
-  const { data: employer, error: employerError } = await supabase
-    .from("employer_profiles")
-    .select("id")
-    .eq("profile_id", userId)
-    .maybeSingle();
-
-  normalizeError(employerError);
+  const employer = await getCurrentEmployerProfileForContext(supabase, userId);
   if (!employer) return { pending: [], agreed: [] };
 
-  const { data: handshakes, error: handshakeError } = await supabase
-    .from("handshakes")
-    .select("*")
-    .eq("employer_profile_id", employer.id)
-    .in("status", ["matched", "completed"])
-    .order("created_at", { ascending: false });
-  normalizeError(handshakeError);
+  const [requests, handshakeResult] = await Promise.all([
+    getEmployerRequestsForProfile(supabase, employer.id),
+    supabase
+      .from("handshakes")
+      .select(handshakeSelect)
+      .eq("employer_profile_id", employer.id)
+      .in("status", ["matched", "completed"])
+      .order("created_at", { ascending: false })
+      .limit(50),
+  ]);
+  normalizeError(handshakeResult.error);
 
   const handshakeByRequestId = new Map(
-    (handshakes ?? [])
+    (handshakeResult.data ?? [])
       .filter((handshake) => handshake.request_id)
       .map((handshake) => [handshake.request_id, handshake]),
   );
@@ -827,8 +874,9 @@ export async function getAdminWorkers(): Promise<AdminWorker[]> {
     await Promise.all([
       supabase
         .from("worker_profiles")
-        .select("*")
-        .order("created_at", { ascending: false }),
+        .select(workerProfileRowSelect)
+        .order("created_at", { ascending: false })
+        .limit(100),
       supabase.from("categories").select("id, name"),
     ]);
   normalizeError(error);
@@ -851,10 +899,33 @@ export async function getAdminWorkerDetails(
   workerProfileId: string,
 ): Promise<AdminWorkerDetail | null> {
   const { supabase } = await getAuthContext();
-  const worker = (await getAdminWorkers()).find(
-    (candidate) => candidate.id === workerProfileId,
+  const [
+    { data: workerRow, error: workerError },
+    { data: categories, error: categoriesError },
+  ] = await Promise.all([
+    supabase
+      .from("worker_profiles")
+      .select(workerProfileRowSelect)
+      .eq("id", workerProfileId)
+      .maybeSingle(),
+    supabase.from("categories").select("id, name"),
+  ]);
+  normalizeError(workerError);
+  normalizeError(categoriesError);
+  if (!workerRow) return null;
+
+  const categoryNames = new Map(
+    (categories ?? []).map((category) => [category.id, category.name]),
   );
-  if (!worker) return null;
+  const worker: AdminWorker = {
+    ...workerRow,
+    category_name: workerRow.category_id
+      ? (categoryNames.get(workerRow.category_id) ?? null)
+      : null,
+    extra_specialty_names: workerRow.extra_specialty_ids
+      .map((specialtyId) => categoryNames.get(specialtyId))
+      .filter((name): name is string => Boolean(name)),
+  };
 
   const { data: portfolio, error } = await supabase
     .from("worker_portfolio")
@@ -869,8 +940,9 @@ export async function getAdminEmailWhitelist() {
   const { supabase } = await getAuthContext();
   const { data, error } = await supabase
     .from("admin_email_whitelist")
-    .select("*")
-    .order("created_at", { ascending: false });
+    .select(adminEmailSelect)
+    .order("created_at", { ascending: false })
+    .limit(100);
   normalizeError(error);
   return data ?? [];
 }
@@ -907,9 +979,10 @@ export async function getFeaturedWorkers(): Promise<WorkerMarketplaceItem[]> {
   const supabase = await createClient();
   const { data, error } = await supabase
     .from("public_worker_profiles")
-    .select("*")
+    .select(marketplaceSelect)
     .not("featured_rank", "is", null)
-    .order("featured_rank", { ascending: true });
+    .order("featured_rank", { ascending: true })
+    .limit(8);
   normalizeError(error);
   return data ?? [];
 }
@@ -918,18 +991,31 @@ export async function getAdminEmployers() {
   const { supabase } = await getAuthContext();
   const { data, error } = await supabase
     .from("employer_profiles")
-    .select("*")
-    .order("created_at", { ascending: false });
+    .select(employerProfileSelect)
+    .order("created_at", { ascending: false })
+    .limit(100);
   normalizeError(error);
   return data ?? [];
+}
+
+export async function getAdminEmployer(employerProfileId: string) {
+  const { supabase } = await getAuthContext();
+  const { data, error } = await supabase
+    .from("employer_profiles")
+    .select(employerProfileSelect)
+    .eq("id", employerProfileId)
+    .maybeSingle();
+  normalizeError(error);
+  return data;
 }
 
 export async function getAdminHandshakes() {
   const { supabase } = await getAuthContext();
   const { data, error } = await supabase
     .from("handshakes")
-    .select("*")
-    .order("created_at", { ascending: false });
+    .select(handshakeRowSelect)
+    .order("created_at", { ascending: false })
+    .limit(100);
   normalizeError(error);
   return data ?? [];
 }
@@ -938,9 +1024,10 @@ export async function getAdminCategories() {
   const { supabase } = await getAuthContext();
   const { data, error } = await supabase
     .from("categories")
-    .select("*")
+    .select(categorySelect)
     .order("display_order")
-    .order("name");
+    .order("name")
+    .limit(200);
   normalizeError(error);
   return data ?? [];
 }
@@ -955,7 +1042,7 @@ export async function createCategory(input: CategoryInput) {
       slug: parsed.slug,
       display_order: parsed.displayOrder,
     })
-    .select()
+    .select(categorySelect)
     .single();
   normalizeError(error);
   return data;
@@ -1049,9 +1136,10 @@ export async function getEmployerGallery(employerProfileId: string) {
   const supabase = await createClient();
   const { data, error } = await supabase
     .from("employer_gallery")
-    .select("*")
+    .select(gallerySelect)
     .eq("employer_profile_id", parsedId)
-    .order("display_order");
+    .order("display_order")
+    .limit(50);
 
   normalizeError(error);
   return data ?? [];
@@ -1063,9 +1151,10 @@ export async function getNotifications(): Promise<Notification[]> {
 
   const { data, error } = await supabase
     .from("notifications")
-    .select("*")
+    .select(notificationSelect)
     .eq("profile_id", user.id)
-    .order("created_at", { ascending: false });
+    .order("created_at", { ascending: false })
+    .limit(50);
 
   normalizeError(error);
   return data ?? [];

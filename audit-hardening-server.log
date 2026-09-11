@@ -1,0 +1,9 @@
+
+> beauty-connect-v1@0.1.0 start
+> next start -p 3011
+
+▲ Next.js 16.3.4
+- Local:         http://localhost:3011
+- Network:       http://192.168.100.12:3011
+✓ Ready in 587ms
+✓ Running next.config.ts took 90ms

@@ -1,5 +1,6 @@
 import Link from "next/link";
 import { ArrowDown, CheckCircle2, UserRound } from "lucide-react";
+import Image from "next/image";
 import {
   getCurrentWorkerProfile,
   getWorkerProfileAnalytics,
@@ -74,13 +75,15 @@ export default async function WorkerHomePage() {
               <Link
                 href="/worker/profile"
                 aria-label="View your profile"
-                className="grid size-[72px] shrink-0 place-items-center overflow-hidden rounded-xl bg-[#f3eef1]"
+                className="relative grid size-[72px] shrink-0 place-items-center overflow-hidden rounded-xl bg-[#f3eef1]"
               >
                 {profileImage ? (
-                  <img
+                  <Image
                     src={profileImage}
                     alt=""
-                    className="size-full object-cover"
+                    fill
+                    sizes="72px"
+                    className="object-cover"
                   />
                 ) : (
                   <UserRound className="size-7 text-[#a19aa0]" />

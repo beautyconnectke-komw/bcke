@@ -9,9 +9,11 @@ import { Button } from "@/components/shared/ui";
 export function AuthForm({
   mode,
   redirectTo = "/select-role",
+  showGoogle = true,
 }: {
   mode: "login" | "signup";
   redirectTo?: string;
+  showGoogle?: boolean;
 }) {
   const router = useRouter();
   const [email, setEmail] = useState("");
@@ -20,6 +22,38 @@ export function AuthForm({
   const [error, setError] = useState<string | null>(null);
   const [message, setMessage] = useState<string | null>(null);
   const [busy, setBusy] = useState(false);
+  const [googleBusy, setGoogleBusy] = useState(false);
+
+  async function continueWithGoogle() {
+    setError(null);
+    setMessage(null);
+    setGoogleBusy(true);
+
+    try {
+      const supabase = createClient();
+      const callbackUrl = new URL("/auth/callback", window.location.origin);
+      callbackUrl.searchParams.set("next", redirectTo);
+
+      const { data, error: oauthError } = await supabase.auth.signInWithOAuth(
+        {
+          provider: "google",
+          options: {
+            redirectTo: callbackUrl.toString(),
+          },
+        },
+      );
+
+      if (oauthError) throw oauthError;
+      if (!data.url) throw new Error("Could not start Google sign-in.");
+
+      window.location.assign(data.url);
+    } catch (caught) {
+      setError(
+        caught instanceof Error ? caught.message : "Google sign-in failed.",
+      );
+      setGoogleBusy(false);
+    }
+  }
 
   async function submit(event: FormEvent<HTMLFormElement>) {
     event.preventDefault();
@@ -86,6 +120,25 @@ export function AuthForm({
 
   return (
     <form onSubmit={submit} className="grid gap-5">
+      {showGoogle ? (
+        <>
+          <Button
+            type="button"
+            variant="secondary"
+            className="w-full"
+            onClick={continueWithGoogle}
+            disabled={busy || googleBusy}
+          >
+            <GoogleIcon />
+            {googleBusy ? "Connecting..." : "Continue with Google"}
+          </Button>
+          <div className="flex items-center gap-3 text-xs text-muted-foreground">
+            <span className="h-px flex-1 bg-border" />
+            <span>or continue with email</span>
+            <span className="h-px flex-1 bg-border" />
+          </div>
+        </>
+      ) : null}
       <label className="grid gap-2 text-sm font-medium">
         Email
         <input
@@ -143,5 +196,33 @@ export function AuthForm({
         </Link>
       </p>
     </form>
+  );
+}
+
+function GoogleIcon() {
+  return (
+    <svg
+      aria-hidden="true"
+      viewBox="0 0 24 24"
+      className="size-4"
+      fill="none"
+    >
+      <path
+        fill="#4285F4"
+        d="M21.6 12.23c0-.72-.06-1.42-.18-2.08H12v3.94h5.38a4.6 4.6 0 0 1-1.99 3.02v2.51h3.22c1.88-1.73 2.99-4.28 2.99-7.39Z"
+      />
+      <path
+        fill="#34A853"
+        d="M12 22c2.7 0 4.96-.9 6.61-2.38l-3.22-2.51c-.9.6-2.05.96-3.39.96-2.6 0-4.8-1.76-5.59-4.12H3.08v2.59A9.99 9.99 0 0 0 12 22Z"
+      />
+      <path
+        fill="#FBBC05"
+        d="M6.41 13.95A6 6 0 0 1 6.1 12c0-.68.12-1.34.31-1.95V7.46H3.08A10 10 0 0 0 2 12c0 1.61.39 3.13 1.08 4.54l3.33-2.59Z"
+      />
+      <path
+        fill="#EA4335"
+        d="M12 5.93c1.47 0 2.79.5 3.83 1.49l2.87-2.87C16.95 2.95 14.7 2 12 2a9.99 9.99 0 0 0-8.92 5.46l3.33 2.59C7.2 7.69 9.4 5.93 12 5.93Z"
+      />
+    </svg>
   );
 }

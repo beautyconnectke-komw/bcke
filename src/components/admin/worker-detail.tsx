@@ -1,4 +1,5 @@
 import { MapPin, UserRound } from "lucide-react";
+import Image from "next/image";
 import type { AdminWorkerDetail } from "@/lib/domain/beauty-connect";
 import { env } from "@/config/env";
 import { publicImageUrl } from "@/lib/utils";
@@ -34,9 +35,15 @@ export function AdminWorkerDetailView({
     <div className="mt-8 grid gap-6">
       <section className="border border-border bg-background p-6">
         <div className="flex flex-wrap items-start gap-5">
-          <div className="grid size-28 shrink-0 place-items-center overflow-hidden bg-muted sm:size-36">
+          <div className="relative grid size-28 shrink-0 place-items-center overflow-hidden bg-muted sm:size-36">
             {photo ? (
-              <img src={photo} alt="" className="size-full object-cover" />
+              <Image
+                src={photo}
+                alt=""
+                fill
+                sizes="(min-width: 640px) 144px, 112px"
+                className="object-cover"
+              />
             ) : (
               <UserRound className="size-9 text-muted-foreground" />
             )}
@@ -87,20 +94,27 @@ export function AdminWorkerDetailView({
         <h2 className="text-lg font-semibold">Portfolio</h2>
         {portfolio.length ? (
           <div className="mt-4 grid grid-cols-2 gap-3 sm:grid-cols-4">
-            {portfolio.map((item) => (
-              <img
-                key={item.id}
-                src={
-                  publicImageUrl(
-                    env.supabase.url,
-                    item.storage_bucket,
-                    item.storage_path,
-                  ) ?? ""
-                }
-                alt={item.alt_text || "Portfolio example"}
-                className="aspect-square w-full object-cover"
-              />
-            ))}
+            {portfolio.map((item) => {
+              const image = publicImageUrl(
+                env.supabase.url,
+                item.storage_bucket,
+                item.storage_path,
+              );
+              return image ? (
+                <div
+                  key={item.id}
+                  className="relative aspect-square overflow-hidden"
+                >
+                  <Image
+                    src={image}
+                    alt={item.alt_text || "Portfolio example"}
+                    fill
+                    sizes="(min-width: 1024px) 220px, (min-width: 640px) 25vw, 50vw"
+                    className="object-cover"
+                  />
+                </div>
+              ) : null;
+            })}
           </div>
         ) : (
           <p className="mt-3 text-sm text-muted-foreground">

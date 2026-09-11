@@ -1,4 +1,5 @@
 import Link from "next/link";
+import Image from "next/image";
 import { ArrowLeft, Mail, MapPin, Phone, UserRound } from "lucide-react";
 import {
   getCurrentWorkerRequestForEmployer,
@@ -54,9 +55,15 @@ export default async function WorkerEmployerDetailPage({
         </Link>
         <section className="mt-6 border border-border bg-background p-5 sm:p-8">
           <div className="flex flex-col gap-5 sm:flex-row sm:items-start">
-            <div className="grid size-28 shrink-0 place-items-center overflow-hidden bg-muted sm:size-36">
+            <div className="relative grid size-28 shrink-0 place-items-center overflow-hidden bg-muted sm:size-36">
               {image ? (
-                <img src={image} alt="" className="size-full object-cover" />
+                <Image
+                  src={image}
+                  alt=""
+                  fill
+                  sizes="(min-width: 640px) 144px, 112px"
+                  className="object-cover"
+                />
               ) : (
                 <UserRound className="size-10 text-muted-foreground" />
               )}
@@ -121,20 +128,27 @@ export default async function WorkerEmployerDetailPage({
               <h2 className="text-lg font-semibold">Salon images</h2>
               {gallery.length ? (
                 <div className="mt-3 grid grid-cols-2 gap-3 sm:grid-cols-4">
-                  {gallery.map((item) => (
-                    <img
-                      key={item.id}
-                      src={
-                        publicImageUrl(
-                          env.supabase.url,
-                          item.storage_bucket,
-                          item.storage_path,
-                        ) ?? ""
-                      }
-                      alt="Salon"
-                      className="aspect-square w-full object-cover"
-                    />
-                  ))}
+                  {gallery.map((item) => {
+                    const image = publicImageUrl(
+                      env.supabase.url,
+                      item.storage_bucket,
+                      item.storage_path,
+                    );
+                    return image ? (
+                      <div
+                        key={item.id}
+                        className="relative aspect-square overflow-hidden"
+                      >
+                        <Image
+                          src={image}
+                          alt="Salon"
+                          fill
+                          sizes="(min-width: 1024px) 220px, (min-width: 640px) 25vw, 50vw"
+                          className="object-cover"
+                        />
+                      </div>
+                    ) : null;
+                  })}
                 </div>
               ) : (
                 <p className="mt-3 text-sm text-muted-foreground">
