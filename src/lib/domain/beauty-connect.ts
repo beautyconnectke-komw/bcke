@@ -1,9 +1,12 @@
 import "server-only";
 
 import type { SupabaseClient } from "@supabase/supabase-js";
+import { createClient as createSupabaseClient } from "@supabase/supabase-js";
+import { revalidateTag, unstable_cache } from "next/cache";
 import { cache } from "react";
+import { getSupabaseConfig } from "@/config/env";
 import { createClient } from "@/lib/supabase/server";
-import { getAuthContext } from "@/lib/domain/auth";
+import { getAuthContext, getOptionalAuthContext } from "@/lib/domain/auth";
 import {
   adminEmployerDecisionSchema,
   adminWorkerDecisionSchema,
@@ -11,6 +14,7 @@ import {
   marketplaceFiltersSchema,
   notificationIdSchema,
   requestWorkerSchema,
+  workerReactivationRequestSchema,
   respondToWorkerRequestSchema,
   uuidSchema,
   workerApplicationSchema,
@@ -22,6 +26,7 @@ import {
   type EmployerProfileInput,
   type MarketplaceFiltersInput,
   type RequestWorkerInput,
+  type WorkerReactivationRequestInput,
   type RespondToWorkerRequestInput,
   type WorkerApplicationInput,
   type WorkerApplicationSubmissionInput,
@@ -32,8 +37,10 @@ import {
   adminEmailSchema,
   categorySchema,
   featuredWorkerIdsSchema,
+  companyContactSchema,
   type AdminEmailInput,
   type CategoryInput,
+  type CompanyContactInput,
   type FeaturedWorkerIdsInput,
 } from "@/lib/validations/admin";
 import type { Database, Json, Tables } from "@/types/database";
@@ -42,11 +49,13 @@ import { AuthenticationRequiredError, DomainError } from "./errors";
 type Supabase = SupabaseClient<Database, "public">;
 
 const marketplaceSelect =
-  "id, full_name, location, profile_photo_path, category_id, category_name, category_slug, years_experience, availability_status, created_at, updated_at, county, town, experience_months";
+  "id, full_name, location, profile_photo_path, category_id, category_name, category_slug, extra_specialty_ids, extra_specialty_names, years_experience, compensation_model, salary_expectation, commission_expectation, availability_status, created_at, updated_at, county, town, experience_months, featured_rank";
 const workerProfileSelect =
   "id, full_name, location, profile_photo_path, category_id, category_name, category_slug, years_experience, short_bio, work_experience, skills, compensation_model, salary_expectation, commission_expectation, availability_status, created_at, updated_at, county, town, experience_months, extra_specialty_ids, extra_specialty_names, featured_rank";
 const employerRequestSelect =
   "id, employer_profile_id, worker_profile_id, status, message, responded_at, expires_at, created_at, updated_at";
+const reactivationRequestSelect =
+  "id, worker_profile_id, reason, status, reviewed_at, created_at, updated_at";
 const handshakeSelect =
   "id, employer_profile_id, worker_profile_id, request_id, status, matched_at, completed_at, cancelled_at, created_at, updated_at";
 const notificationSelect =
@@ -55,6 +64,8 @@ const workerProfileRowSelect =
   "id, profile_id, category_id, full_name, phone, location, county, town, profile_photo_path, years_experience, experience_months, experience_started_at, short_bio, work_experience, skills, extra_specialty_ids, featured_rank, compensation_model, salary_expectation, commission_expectation, verification_status, availability_status, is_suspended, public_visible, created_at, updated_at";
 const employerProfileSelect =
   "id, profile_id, business_name, contact_person, phone, business_email, description, location, address_line, latitude, longitude, profile_image_path, salon_info, is_suspended, created_at, updated_at";
+const publicEmployerProfileSelect =
+  "id, business_name, description, location, address_line, profile_image_path, salon_info, created_at, updated_at";
 const portfolioSelect =
   "id, worker_profile_id, storage_bucket, storage_path, display_order, alt_text, created_at, updated_at";
 const publicPortfolioSelect = portfolioSelect;
@@ -63,7 +74,7 @@ const gallerySelect =
 const handshakeRowSelect =
   "id, employer_profile_id, worker_profile_id, request_id, status, matched_at, completed_at, cancelled_at, created_at, updated_at";
 const categorySelect =
-  "id, name, slug, is_active, display_order, created_at, updated_at";
+  "id, name, slug, is_active, display_order, image_path, created_at, updated_at";
 const adminEmailSelect = "email, created_at";
 
 type WorkerMarketplaceRow =
@@ -77,22 +88,46 @@ export type WorkerMarketplaceItem = Pick<
   | "category_id"
   | "category_name"
   | "category_slug"
+  | "extra_specialty_ids"
+  | "extra_specialty_names"
   | "years_experience"
+  | "compensation_model"
+  | "salary_expectation"
+  | "commission_expectation"
   | "availability_status"
   | "created_at"
   | "updated_at"
   | "county"
   | "town"
   | "experience_months"
+  | "featured_rank"
 >;
+export type WorkerMarketplacePage = {
+  workers: WorkerMarketplaceItem[];
+  hasMore: boolean;
+  page: number;
+};
 export type PublicEmployerProfile =
-  Database["public"]["Views"]["public_employer_profiles"]["Row"];
+  Database["public"]["Views"]["public_employer_profiles"]["Row"] & {
+    contact_person: string | null;
+    phone: string | null;
+    business_email: string | null;
+  };
 export type Notification = Tables<"notifications">;
 export type WorkerProfile = Tables<"worker_profiles">;
 export type AdminWorker = WorkerProfile & {
   category_name: string | null;
   extra_specialty_names: string[];
 };
+export type ReactivationRequest = Tables<"worker_reactivation_requests">;
+export type AdminReactivationRequest = ReactivationRequest & {
+  worker: AdminWorker | null;
+};
+export type WorkerPublicProfile =
+  Database["public"]["Views"]["public_worker_profiles"]["Row"] & {
+    phone: string | null;
+    contact_unlocked: boolean;
+  };
 export type AdminWorkerDetail = {
   worker: AdminWorker;
   portfolio: Tables<"worker_portfolio">[];
@@ -101,6 +136,10 @@ export type EmployerProfile = Tables<"employer_profiles">;
 export type EmployerRequest = Tables<"employer_requests">;
 export type Handshake = Tables<"handshakes">;
 export type Category = Tables<"categories">;
+export type CompanyContact = Pick<
+  Tables<"company_settings">,
+  "phone" | "email"
+>;
 
 export type WorkerRequestWithEmployer = EmployerRequest & {
   employer: Pick<
@@ -118,6 +157,7 @@ export type EmployerStatusItem = EmployerRequestWithWorker & {
 export type EmployerStatus = {
   pending: EmployerStatusItem[];
   agreed: EmployerStatusItem[];
+  declined: EmployerStatusItem[];
 };
 export type WorkerStatusItem = WorkerRequestWithEmployer & {
   handshake: Handshake | null;
@@ -125,6 +165,14 @@ export type WorkerStatusItem = WorkerRequestWithEmployer & {
 export type WorkerStatus = {
   pending: WorkerStatusItem[];
   accepted: WorkerStatusItem[];
+};
+export type WorkerStatusPage = WorkerStatus & {
+  hasMore: boolean;
+  page: number;
+};
+export type EmployerStatusPage = EmployerStatus & {
+  hasMore: boolean;
+  page: number;
 };
 export type WorkerProfileAnalytics = {
   totalProfileViews: number;
@@ -447,6 +495,21 @@ export async function respondToWorkerRequest(
   return data;
 }
 
+export async function requestWorkerReactivation(
+  input: WorkerReactivationRequestInput,
+) {
+  const parsed = workerReactivationRequestSchema.parse(input);
+  const supabase = await createClient();
+  await requireUser(supabase);
+
+  const { data, error } = await supabase.rpc("bc_request_worker_reactivation", {
+    p_reason: parsed.reason ?? null,
+  });
+
+  normalizeError(error);
+  return data;
+}
+
 export async function completeHandshake(requestId: string) {
   return respondToWorkerRequest({
     requestId,
@@ -456,13 +519,20 @@ export async function completeHandshake(requestId: string) {
 
 export async function getWorkerMarketplace(
   filters: MarketplaceFiltersInput = {},
-): Promise<WorkerMarketplaceItem[]> {
+  page = 1,
+): Promise<WorkerMarketplacePage> {
   const parsed = marketplaceFiltersSchema.parse(filters);
   const supabase = await createClient();
+  const safePage =
+    Number.isInteger(page) && page > 0 ? Math.min(page, 1000) : 1;
+  const pageSize = 20;
+  const rankingWindowSize = 48;
 
   let query = supabase
     .from("public_worker_profiles")
     .select(marketplaceSelect)
+    .order("featured_rank", { ascending: true, nullsFirst: false })
+    .order("years_experience", { ascending: false, nullsFirst: false })
     .order("created_at", { ascending: false });
 
   if (parsed.categoryId) {
@@ -470,21 +540,120 @@ export async function getWorkerMarketplace(
   }
 
   if (parsed.search) {
-    const term = parsed.search.replace(/[,()]/g, " ");
-    query = query.or(`full_name.ilike.%${term}%,category_name.ilike.%${term}%`);
+    const term = parsed.search.replace(/[%,*().]/g, " ").trim();
+    if (term) {
+      const matchingSpecialtyIds = (await getCategories())
+        .filter((category) =>
+          category.name.toLowerCase().includes(term.toLowerCase()),
+        )
+        .map((category) => category.id);
+      const searchFilters = [
+        `full_name.ilike.%${term}%`,
+        `location.ilike.%${term}%`,
+        `county.ilike.%${term}%`,
+        `town.ilike.%${term}%`,
+        `category_name.ilike.%${term}%`,
+        ...matchingSpecialtyIds.map(
+          (specialtyId) => `extra_specialty_ids.cs.{${specialtyId}}`,
+        ),
+      ];
+      query = query.or(searchFilters.join(","));
+    }
+  }
+
+  if (parsed.county) {
+    const location = parsed.county.replace(/[%,*().]/g, " ").trim();
+    if (location) {
+      query = query.or(
+        `county.ilike.%${location}%,town.ilike.%${location}%,location.ilike.%${location}%`,
+      );
+    }
+  }
+
+  if (parsed.extraSpecialtyId) {
+    query = query.contains("extra_specialty_ids", [parsed.extraSpecialtyId]);
+  }
+
+  if (parsed.compensationModel) {
+    query = query.eq("compensation_model", parsed.compensationModel);
   }
 
   if (parsed.availability) {
     query = query.eq("availability_status", parsed.availability);
+  } else {
+    // Matched workers are not eligible for a new employer request. Keep the
+    // default marketplace bounded to workers the existing request workflow
+    // can actually accept, while preserving explicit status filters.
+    query = query.in("availability_status", ["available", "considering"]);
   }
 
   if (parsed.minimumYearsExperience !== undefined) {
     query = query.gte("years_experience", parsed.minimumYearsExperience);
   }
 
-  const { data, error } = await query.limit(48);
+  // Keep the existing bounded ranking window intact so the deterministic
+  // 15-minute ordering does not change between pages. Only the current page
+  // is returned to the route, and the query never loads the full marketplace.
+  const { data, error } = await query.limit(rankingWindowSize + 1);
   normalizeError(error);
-  return data ?? [];
+  const rankedWorkers = rankMarketplaceWorkers(
+    (data ?? []).slice(0, rankingWindowSize),
+  );
+  const start = (safePage - 1) * pageSize;
+  return {
+    workers: rankedWorkers.slice(start, start + pageSize),
+    hasMore: start + pageSize < rankedWorkers.length,
+    page: safePage,
+  };
+}
+
+const MARKETPLACE_RANK_WINDOW_MS = 15 * 60 * 1000;
+const STATUS_PAGE_SIZE = 10;
+
+function rankMarketplaceWorkers(
+  workers: WorkerMarketplaceItem[],
+): WorkerMarketplaceItem[] {
+  const rankWindow = Math.floor(Date.now() / MARKETPLACE_RANK_WINDOW_MS);
+
+  return [...workers]
+    .map((worker) => ({
+      worker,
+      score:
+        (Math.min(Math.max(worker.years_experience ?? 0, 0), 20) / 20) * 0.35 +
+        workerAgeScore(worker.created_at) * 0.15 +
+        featuredRankScore(worker.featured_rank) * 0.15 +
+        seededUnitValue(`${worker.id}:${rankWindow}`) * 0.35,
+    }))
+    .sort(
+      (left, right) =>
+        right.score - left.score ||
+        left.worker.id.localeCompare(right.worker.id),
+    )
+    .map(({ worker }) => worker);
+}
+
+function workerAgeScore(createdAt: string | null) {
+  if (!createdAt) return 0;
+  const timestamp = Date.parse(createdAt);
+  if (!Number.isFinite(timestamp)) return 0;
+  return Math.min(
+    Math.max(Date.now() - timestamp, 0) / (365 * 24 * 60 * 60 * 1000),
+    1,
+  );
+}
+
+function featuredRankScore(featuredRank: number | null) {
+  if (featuredRank === null) return 0;
+  return Math.max(0, 9 - Math.min(featuredRank, 8)) / 8;
+}
+
+function seededUnitValue(value: string) {
+  let hash = 2166136261;
+  for (let index = 0; index < value.length; index += 1) {
+    hash ^= value.charCodeAt(index);
+    hash = Math.imul(hash, 16777619);
+  }
+  return (hash >>> 0) / 4294967296;
 }
 
 export async function getWorkerProfile(workerProfileId: string) {
@@ -496,7 +665,43 @@ export async function getWorkerProfile(workerProfileId: string) {
     .maybeSingle();
 
   normalizeError(error);
-  return data;
+  if (!data) return null;
+
+  let phone: string | null = null;
+  let contactUnlocked = false;
+  const auth = await getOptionalAuthContext();
+  if (auth) {
+    const { data: employer, error: employerError } = await auth.supabase
+      .from("employer_profiles")
+      .select("id")
+      .eq("profile_id", auth.userId)
+      .maybeSingle();
+    normalizeError(employerError);
+
+    if (employer) {
+      const { data: handshake, error: handshakeError } = await auth.supabase
+        .from("handshakes")
+        .select("id")
+        .eq("employer_profile_id", employer.id)
+        .eq("worker_profile_id", workerProfileId)
+        .in("status", ["matched", "completed"])
+        .maybeSingle();
+      normalizeError(handshakeError);
+      contactUnlocked = Boolean(handshake);
+
+      if (contactUnlocked) {
+        const { data: contact, error: contactError } = await auth.supabase
+          .from("worker_profiles")
+          .select("phone")
+          .eq("id", workerProfileId)
+          .maybeSingle();
+        normalizeError(contactError);
+        phone = contact?.phone ?? null;
+      }
+    }
+  }
+
+  return { ...data, phone, contact_unlocked: contactUnlocked };
 }
 
 export async function recordWorkerProfileView(workerProfileId: string) {
@@ -552,6 +757,22 @@ export async function getCurrentWorkerProfile(): Promise<WorkerProfile | null> {
   return getCurrentWorkerProfileForContext(supabase, userId);
 }
 
+export async function getCurrentWorkerReactivationRequest(): Promise<ReactivationRequest | null> {
+  const { supabase, userId } = await getAuthContext();
+  const worker = await getCurrentWorkerProfileForContext(supabase, userId);
+  if (!worker) return null;
+
+  const { data, error } = await supabase
+    .from("worker_reactivation_requests")
+    .select(reactivationRequestSelect)
+    .eq("worker_profile_id", worker.id)
+    .order("created_at", { ascending: false })
+    .limit(1)
+    .maybeSingle();
+  normalizeError(error);
+  return data;
+}
+
 export async function getCurrentWorkerPortfolio() {
   const { supabase, userId } = await getAuthContext();
   const worker = await getCurrentWorkerProfileForContext(supabase, userId);
@@ -589,19 +810,58 @@ export async function getCurrentEmployerGallery(): Promise<
   return data ?? [];
 }
 
-export const getCategories = cache(async (): Promise<Category[]> => {
-  const supabase = await createClient();
-  const { data, error } = await supabase
-    .from("categories")
-    .select(categorySelect)
-    .eq("is_active", true)
-    .order("display_order")
-    .order("name")
-    .limit(200);
+const CATEGORIES_CACHE_TAG = "beauty-connect:active-categories";
 
-  normalizeError(error);
+const getCachedCategories = unstable_cache(
+  async (): Promise<Category[]> => {
+    const { url, publishableKey } = getSupabaseConfig();
+    // Categories are explicitly public under RLS. Do not bind this cache to a
+    // user's cookie-backed client or one user's session could key the result.
+    const supabase = createSupabaseClient<Database>(url, publishableKey, {
+      auth: {
+        persistSession: false,
+        autoRefreshToken: false,
+        detectSessionInUrl: false,
+      },
+    });
+    const { data, error } = await supabase
+      .from("categories")
+      .select(categorySelect)
+      .eq("is_active", true)
+      .order("display_order")
+      .order("name")
+      .limit(200);
+
+    normalizeError(error);
+    return data ?? [];
+  },
+  ["beauty-connect", "active-categories"],
+  { revalidate: 60, tags: [CATEGORIES_CACHE_TAG] },
+);
+
+export function getCategories(): Promise<Category[]> {
+  return getCachedCategories();
+}
+
+export async function getSpecialityCarouselCategories(): Promise<Category[]> {
+  const { url, publishableKey } = getSupabaseConfig();
+  const supabase = createSupabaseClient<Database>(url, publishableKey, {
+    auth: {
+      persistSession: false,
+      autoRefreshToken: false,
+      detectSessionInUrl: false,
+    },
+  });
+  const { data, error } = await supabase.rpc("bc_get_speciality_carousel");
+
+  if (error) {
+    // Keep the carousel usable while an environment is waiting for the new
+    // migration. The regular active-category ordering remains a safe fallback.
+    return getCategories();
+  }
+
   return data ?? [];
-});
+}
 
 export async function getWorkerPortfolio(workerProfileId: string) {
   const supabase = await createClient();
@@ -644,7 +904,7 @@ async function getWorkerRequestsForProfile(
     ...new Set(requests.map((request) => request.employer_profile_id)),
   ];
   const { data: employers, error: employerError } = await supabase
-    .from("employer_profiles")
+    .from("public_employer_profiles")
     .select("id, business_name, description, location, profile_image_path")
     .in("id", employerIds);
 
@@ -683,7 +943,7 @@ export async function getCurrentWorkerRequestForEmployer(
   if (!request) return null;
 
   const { data: employer, error: employerError } = await supabase
-    .from("employer_profiles")
+    .from("public_employer_profiles")
     .select("id, business_name, description, location, profile_image_path")
     .eq("id", parsedEmployerProfileId)
     .maybeSingle();
@@ -725,6 +985,75 @@ export async function getWorkerStatus(): Promise<WorkerStatus> {
     accepted: items.filter(
       (item) => item.status === "accepted" || item.handshake !== null,
     ),
+  };
+}
+
+export async function getWorkerStatusPage(page = 1): Promise<WorkerStatusPage> {
+  const { supabase, userId } = await getAuthContext();
+  const worker = await getCurrentWorkerProfileForContext(supabase, userId);
+  const safePage =
+    Number.isInteger(page) && page > 0 ? Math.min(page, 1000) : 1;
+  if (!worker) {
+    return { pending: [], accepted: [], hasMore: false, page: safePage };
+  }
+
+  const offset = (safePage - 1) * STATUS_PAGE_SIZE;
+  const { data: requestRows, error: requestError } = await supabase
+    .from("employer_requests")
+    .select(employerRequestSelect)
+    .eq("worker_profile_id", worker.id)
+    .order("created_at", { ascending: false })
+    .range(offset, offset + STATUS_PAGE_SIZE);
+  normalizeError(requestError);
+
+  const hasMore = (requestRows?.length ?? 0) > STATUS_PAGE_SIZE;
+  const requests = (requestRows ?? []).slice(0, STATUS_PAGE_SIZE);
+  if (!requests.length) {
+    return { pending: [], accepted: [], hasMore: false, page: safePage };
+  }
+
+  const employerIds = [
+    ...new Set(requests.map((request) => request.employer_profile_id)),
+  ];
+  const requestIds = requests.map((request) => request.id);
+  const [employerResult, handshakeResult] = await Promise.all([
+    supabase
+      .from("public_employer_profiles")
+      .select("id, business_name, description, location, profile_image_path")
+      .in("id", employerIds),
+    supabase
+      .from("handshakes")
+      .select(handshakeSelect)
+      .eq("worker_profile_id", worker.id)
+      .in("request_id", requestIds)
+      .in("status", ["matched", "completed"]),
+  ]);
+  normalizeError(employerResult.error);
+  normalizeError(handshakeResult.error);
+
+  const employerMap = new Map(
+    (employerResult.data ?? []).map((employer) => [employer.id, employer]),
+  );
+  const handshakeByRequestId = new Map(
+    (handshakeResult.data ?? [])
+      .filter((handshake) => handshake.request_id)
+      .map((handshake) => [handshake.request_id, handshake]),
+  );
+  const items = requests.map((request) => ({
+    ...request,
+    employer: employerMap.get(request.employer_profile_id) ?? null,
+    handshake: handshakeByRequestId.get(request.id) ?? null,
+  }));
+
+  return {
+    pending: items.filter(
+      (item) => item.status === "pending" || item.status === "considering",
+    ),
+    accepted: items.filter(
+      (item) => item.status === "accepted" || item.handshake !== null,
+    ),
+    hasMore,
+    page: safePage,
   };
 }
 
@@ -793,7 +1122,7 @@ export async function getCurrentEmployerRequestForWorker(
 export async function getEmployerStatus(): Promise<EmployerStatus> {
   const { supabase, userId } = await getAuthContext();
   const employer = await getCurrentEmployerProfileForContext(supabase, userId);
-  if (!employer) return { pending: [], agreed: [] };
+  if (!employer) return { pending: [], agreed: [], declined: [] };
 
   const [requests, handshakeResult] = await Promise.all([
     getEmployerRequestsForProfile(supabase, employer.id),
@@ -822,6 +1151,89 @@ export async function getEmployerStatus(): Promise<EmployerStatus> {
       (item) => item.status === "pending" || item.status === "considering",
     ),
     agreed: items.filter((item) => item.handshake !== null),
+    declined: items.filter((item) => item.status === "declined"),
+  };
+}
+
+export async function getEmployerStatusPage(
+  page = 1,
+): Promise<EmployerStatusPage> {
+  const { supabase, userId } = await getAuthContext();
+  const employer = await getCurrentEmployerProfileForContext(supabase, userId);
+  const safePage =
+    Number.isInteger(page) && page > 0 ? Math.min(page, 1000) : 1;
+  if (!employer) {
+    return {
+      pending: [],
+      agreed: [],
+      declined: [],
+      hasMore: false,
+      page: safePage,
+    };
+  }
+
+  const offset = (safePage - 1) * STATUS_PAGE_SIZE;
+  const { data: requestRows, error: requestError } = await supabase
+    .from("employer_requests")
+    .select(employerRequestSelect)
+    .eq("employer_profile_id", employer.id)
+    .order("created_at", { ascending: false })
+    .range(offset, offset + STATUS_PAGE_SIZE);
+  normalizeError(requestError);
+
+  const hasMore = (requestRows?.length ?? 0) > STATUS_PAGE_SIZE;
+  const requests = (requestRows ?? []).slice(0, STATUS_PAGE_SIZE);
+  if (!requests.length) {
+    return {
+      pending: [],
+      agreed: [],
+      declined: [],
+      hasMore: false,
+      page: safePage,
+    };
+  }
+
+  const workerIds = [
+    ...new Set(requests.map((request) => request.worker_profile_id)),
+  ];
+  const requestIds = requests.map((request) => request.id);
+  const [workerResult, handshakeResult] = await Promise.all([
+    supabase
+      .from("public_worker_profiles")
+      .select(marketplaceSelect)
+      .in("id", workerIds),
+    supabase
+      .from("handshakes")
+      .select(handshakeSelect)
+      .eq("employer_profile_id", employer.id)
+      .in("request_id", requestIds)
+      .in("status", ["matched", "completed"]),
+  ]);
+  normalizeError(workerResult.error);
+  normalizeError(handshakeResult.error);
+
+  const workerMap = new Map(
+    (workerResult.data ?? []).map((worker) => [worker.id, worker]),
+  );
+  const handshakeByRequestId = new Map(
+    (handshakeResult.data ?? [])
+      .filter((handshake) => handshake.request_id)
+      .map((handshake) => [handshake.request_id, handshake]),
+  );
+  const items = requests.map((request) => ({
+    ...request,
+    worker: workerMap.get(request.worker_profile_id) ?? null,
+    handshake: handshakeByRequestId.get(request.id) ?? null,
+  }));
+
+  return {
+    pending: items.filter(
+      (item) => item.status === "pending" || item.status === "considering",
+    ),
+    agreed: items.filter((item) => item.handshake !== null),
+    declined: items.filter((item) => item.status === "declined"),
+    hasMore,
+    page: safePage,
   };
 }
 
@@ -895,6 +1307,82 @@ export async function getAdminWorkers(): Promise<AdminWorker[]> {
   }));
 }
 
+export async function getAdminReactivationRequests(): Promise<
+  AdminReactivationRequest[]
+> {
+  const { supabase } = await getAuthContext();
+  const { data: requests, error } = await supabase
+    .from("worker_reactivation_requests")
+    .select(reactivationRequestSelect)
+    .eq("status", "pending")
+    .order("created_at", { ascending: false })
+    .limit(100);
+  normalizeError(error);
+  if (!requests?.length) return [];
+
+  const workerIds = [
+    ...new Set(requests.map((request) => request.worker_profile_id)),
+  ];
+  const [
+    { data: workerRows, error: workerError },
+    { data: categories, error: categoriesError },
+  ] = await Promise.all([
+    supabase
+      .from("worker_profiles")
+      .select(workerProfileRowSelect)
+      .in("id", workerIds),
+    supabase.from("categories").select("id, name"),
+  ]);
+  normalizeError(workerError);
+  normalizeError(categoriesError);
+  const categoryNames = new Map(
+    (categories ?? []).map((category) => [category.id, category.name]),
+  );
+  const workersById = new Map(
+    (workerRows ?? []).map((worker) => [
+      worker.id,
+      {
+        ...worker,
+        category_name: worker.category_id
+          ? (categoryNames.get(worker.category_id) ?? null)
+          : null,
+        extra_specialty_names: worker.extra_specialty_ids
+          .map((specialtyId) => categoryNames.get(specialtyId))
+          .filter((name): name is string => Boolean(name)),
+      },
+    ]),
+  );
+  return requests.map((request) => ({
+    ...request,
+    worker: workersById.get(request.worker_profile_id) ?? null,
+  }));
+}
+
+export async function approveWorkerReactivation(requestId: string) {
+  const parsedRequestId = uuidSchema.parse(requestId);
+  const supabase = await createClient();
+  const { error } = await supabase.rpc("bc_approve_worker_reactivation", {
+    p_request_id: parsedRequestId,
+  });
+  normalizeError(error);
+}
+
+export async function declineWorkerReactivation(
+  requestId: string,
+  reason?: string | null,
+) {
+  const parsedRequestId = uuidSchema.parse(requestId);
+  const parsedReason = workerReactivationRequestSchema
+    .pick({ reason: true })
+    .parse({ reason }).reason;
+  const supabase = await createClient();
+  const { error } = await supabase.rpc("bc_decline_worker_reactivation", {
+    p_request_id: parsedRequestId,
+    p_reason: parsedReason ?? null,
+  });
+  normalizeError(error);
+}
+
 export async function getAdminWorkerDetails(
   workerProfileId: string,
 ): Promise<AdminWorkerDetail | null> {
@@ -945,6 +1433,74 @@ export async function getAdminEmailWhitelist() {
     .limit(100);
   normalizeError(error);
   return data ?? [];
+}
+
+export async function getCompanyContact(): Promise<CompanyContact> {
+  const { supabase } = await getAuthContext();
+  const { data, error } = await supabase
+    .from("company_settings")
+    .select("phone, email")
+    .eq("id", 1)
+    .maybeSingle();
+  normalizeError(error);
+  return data ?? { phone: null, email: null };
+}
+
+export async function updateCompanyContact(input: CompanyContactInput) {
+  const parsed = companyContactSchema.parse(input);
+  const { supabase, profile } = await getAuthContext();
+  if (profile?.role !== "admin") {
+    throw new DomainError("Admin authorization is required.");
+  }
+
+  const { error } = await supabase.rpc("bc_update_company_settings", {
+    p_phone: parsed.phone,
+    p_email: parsed.email,
+  });
+  normalizeError(error);
+}
+
+async function verifyCurrentPassword(password: string) {
+  if (typeof password !== "string" || password.length === 0) {
+    throw new DomainError("Enter your password to continue.");
+  }
+
+  const { supabase } = await getAuthContext();
+  const {
+    data: { user },
+    error: userError,
+  } = await supabase.auth.getUser();
+  if (userError || !user?.email) {
+    throw new AuthenticationRequiredError();
+  }
+
+  const { url, publishableKey } = getSupabaseConfig();
+  const verifier = createSupabaseClient<Database>(url, publishableKey, {
+    auth: {
+      persistSession: false,
+      autoRefreshToken: false,
+      detectSessionInUrl: false,
+    },
+  });
+  const { error: passwordError } = await verifier.auth.signInWithPassword({
+    email: user.email,
+    password,
+  });
+  if (passwordError) {
+    throw new DomainError("The password you entered is incorrect.");
+  }
+}
+
+export async function verifyAccountPassword(password: string) {
+  await verifyCurrentPassword(password);
+}
+
+export async function requestAccountDeletion(password: string) {
+  await verifyCurrentPassword(password);
+  const { supabase } = await getAuthContext();
+  const { data, error } = await supabase.rpc("bc_request_account_deletion");
+  normalizeError(error);
+  return data;
 }
 
 export async function addAdminEmail(input: AdminEmailInput) {
@@ -1041,10 +1597,30 @@ export async function createCategory(input: CategoryInput) {
       name: parsed.name,
       slug: parsed.slug,
       display_order: parsed.displayOrder,
+      image_path: parsed.imagePath ?? null,
     })
     .select(categorySelect)
     .single();
   normalizeError(error);
+  revalidateTag(CATEGORIES_CACHE_TAG, { expire: 0 });
+  return data;
+}
+
+export async function updateCategoryImage(
+  categoryId: string,
+  imagePath: string | null,
+) {
+  const parsedCategoryId = uuidSchema.parse(categoryId);
+  const parsedImagePath = categorySchema.shape.imagePath.parse(imagePath);
+  const { supabase } = await getAuthContext();
+  const { data, error } = await supabase
+    .from("categories")
+    .update({ image_path: parsedImagePath ?? null })
+    .eq("id", parsedCategoryId)
+    .select(categorySelect)
+    .single();
+  normalizeError(error);
+  revalidateTag(CATEGORIES_CACHE_TAG, { expire: 0 });
   return data;
 }
 
@@ -1055,6 +1631,7 @@ export async function toggleCategory(categoryId: string, isActive: boolean) {
     .update({ is_active: isActive })
     .eq("id", categoryId);
   normalizeError(error);
+  revalidateTag(CATEGORIES_CACHE_TAG, { expire: 0 });
 }
 
 export async function saveWorkerDraft(input: WorkerApplicationInput) {
@@ -1120,15 +1697,56 @@ export async function getEmployerProfile(
 ): Promise<PublicEmployerProfile | null> {
   const supabase = await createClient();
   const { data, error } = await supabase
-    .from("employer_profiles")
-    .select(
-      "id, business_name, phone, business_email, description, location, address_line, profile_image_path, salon_info, created_at, updated_at",
-    )
+    .from("public_employer_profiles")
+    .select(publicEmployerProfileSelect)
     .eq("id", employerProfileId)
     .maybeSingle();
 
   normalizeError(error);
-  return data;
+  if (!data) return null;
+
+  let contactPerson: string | null = null;
+  let phone: string | null = null;
+  let businessEmail: string | null = null;
+  const auth = await getOptionalAuthContext();
+  if (auth) {
+    const { data: worker, error: workerError } = await auth.supabase
+      .from("worker_profiles")
+      .select("id")
+      .eq("profile_id", auth.userId)
+      .maybeSingle();
+    normalizeError(workerError);
+
+    if (worker) {
+      const { data: handshake, error: handshakeError } = await auth.supabase
+        .from("handshakes")
+        .select("id")
+        .eq("employer_profile_id", employerProfileId)
+        .eq("worker_profile_id", worker.id)
+        .in("status", ["matched", "completed"])
+        .maybeSingle();
+      normalizeError(handshakeError);
+
+      if (handshake) {
+        const { data: contact, error: contactError } = await auth.supabase
+          .from("employer_profiles")
+          .select("contact_person, phone, business_email")
+          .eq("id", employerProfileId)
+          .maybeSingle();
+        normalizeError(contactError);
+        contactPerson = contact?.contact_person ?? null;
+        phone = contact?.phone ?? null;
+        businessEmail = contact?.business_email ?? null;
+      }
+    }
+  }
+
+  return {
+    ...data,
+    contact_person: contactPerson,
+    phone,
+    business_email: businessEmail,
+  };
 }
 
 export async function getEmployerGallery(employerProfileId: string) {

@@ -12,17 +12,24 @@ import { EmptyState, StatusPill } from "@/components/shared/ui";
 export function EmployerStatusTabs({
   pending,
   agreed,
+  declined,
+  hasMore,
+  page,
 }: {
   pending: EmployerStatusItem[];
   agreed: EmployerStatusItem[];
+  declined: EmployerStatusItem[];
+  hasMore: boolean;
+  page: number;
 }) {
-  const [tab, setTab] = useState<"pending" | "agreed">("pending");
-  const items = tab === "pending" ? pending : agreed;
+  const [tab, setTab] = useState<"pending" | "agreed" | "declined">("pending");
+  const items =
+    tab === "pending" ? pending : tab === "agreed" ? agreed : declined;
 
   return (
     <div className="mt-8 grid gap-5">
       <div
-        className="grid grid-cols-2 rounded-xl border border-border bg-muted/30 p-1"
+        className="grid grid-cols-3 rounded-xl border border-border bg-muted/30 p-1"
         role="tablist"
         aria-label="Employer connections"
       >
@@ -30,6 +37,7 @@ export function EmployerStatusTabs({
           [
             ["pending", "Pending", pending.length],
             ["agreed", "Agreed", agreed.length],
+            ["declined", "Declined", declined.length],
           ] as const
         ).map(([value, label, count]) => (
           <button
@@ -53,7 +61,9 @@ export function EmployerStatusTabs({
       <p className="text-sm text-muted-foreground">
         {tab === "pending"
           ? "Requests awaiting a worker response or being considered."
-          : "Requests that became confirmed handshakes."}
+          : tab === "agreed"
+            ? "Requests that became confirmed handshakes."
+            : "Requests the worker declined."}
       </p>
       <div
         id="employer-status-panel"
@@ -69,12 +79,16 @@ export function EmployerStatusTabs({
             title={
               tab === "pending"
                 ? "No pending requests."
-                : "No agreed requests yet."
+                : tab === "agreed"
+                  ? "No agreed requests yet."
+                  : "No declined requests."
             }
             description={
               tab === "pending"
                 ? "When you send a worker request, it will appear here until they respond."
-                : "A request moves here after the worker accepts and the handshake is created."
+                : tab === "agreed"
+                  ? "A request moves here after the worker accepts and the handshake is created."
+                  : "Declined requests remain visible here for your records."
             }
             action={
               tab === "pending" ? (
@@ -89,6 +103,16 @@ export function EmployerStatusTabs({
           />
         ) : null}
       </div>
+      {hasMore ? (
+        <div className="flex justify-center">
+          <Link
+            href={`/employer/status?page=${page + 1}`}
+            className="rounded-md border border-border px-5 py-3 text-sm font-medium transition hover:border-foreground"
+          >
+            See More
+          </Link>
+        </div>
+      ) : null}
     </div>
   );
 }
@@ -98,7 +122,7 @@ function StatusRequestCard({
   tab,
 }: {
   item: EmployerStatusItem;
-  tab: "pending" | "agreed";
+  tab: "pending" | "agreed" | "declined";
 }) {
   const worker = item.worker;
   const image = publicImageUrl(
@@ -140,8 +164,20 @@ function StatusRequestCard({
         </p>
       </div>
       <div className="grid shrink-0 justify-items-end gap-1">
-        <StatusPill tone={tab === "agreed" ? "success" : "warning"}>
-          {tab === "agreed" ? "Agreed" : item.status}
+        <StatusPill
+          tone={
+            tab === "agreed"
+              ? "success"
+              : tab === "declined"
+                ? "danger"
+                : "warning"
+          }
+        >
+          {tab === "agreed"
+            ? "Agreed"
+            : tab === "declined"
+              ? "Declined"
+              : item.status}
         </StatusPill>
         <span className="text-[11px] text-muted-foreground">
           {formatDate(item.created_at)}

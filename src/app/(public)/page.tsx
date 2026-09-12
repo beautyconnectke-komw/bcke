@@ -1,185 +1,387 @@
 import Link from "next/link";
-import { ArrowUpRight, Check, ShieldCheck, Sparkles } from "lucide-react";
+import Image from "next/image";
+import {
+  ArrowRight,
+  CheckCircle2,
+  Handshake,
+  LockKeyhole,
+  Scissors,
+  ShieldCheck,
+  Store,
+  Verified,
+  Zap,
+} from "lucide-react";
+import styles from "./landing.module.css";
 
-const steps = {
-  worker: [
+const workerSteps = [
+  [
     "Create your profile",
+    "Showcase your specialties, rates, experience, and portfolio.",
+  ],
+  [
     "Submit it for review",
-    "Discover opportunities",
+    "Beauty Connect's approval ensures credentials are authentic and builds maximum trust with you and salons.",
+  ],
+  ["Wait for opportunities", "Wait for salons to send requests to you."],
+  [
     "Respond to salon requests",
+    "Accept, consider, or decline direct offers in one tap.",
   ],
-  employer: [
+];
+
+const salonSteps = [
+  [
     "Create your salon profile",
-    "Browse trusted workers",
-    "Send a request",
-    "Connect when interest is mutual",
+    "Create your profile and showcase what your salon offers.",
   ],
-};
+  [
+    "Browse trusted workers",
+    "Filter workers by their specialties, pay-rates, experience, and much more...",
+  ],
+  [
+    "Send a request",
+    "Offer a seat, shift, or permanent position instantly with transparency.",
+  ],
+  [
+    "Connect when interest is mutual",
+    "Unlock direct contact details after the worker agrees to what you are offering.",
+  ],
+];
 
 export default function Home() {
   return (
-    <main className="bg-[#faf9f7] text-foreground">
-      <header className="mx-auto flex max-w-7xl items-center justify-between px-5 py-5 sm:px-8">
-        <Link href="/" className="flex items-center gap-3">
-          <span className="grid size-9 place-items-center bg-foreground text-xs font-bold text-background">
-            BC
-          </span>
-          <span className="text-sm font-semibold tracking-wide">
+    <main className={styles.page}>
+      <div className={`${styles.orb} ${styles.orbOne}`} aria-hidden="true" />
+      <div className={`${styles.orb} ${styles.orbTwo}`} aria-hidden="true" />
+      <div className={`${styles.orb} ${styles.orbThree}`} aria-hidden="true" />
+
+      <header className={styles.header}>
+        <div className={styles.headerInner}>
+          <Link href="/" className={styles.brand}>
             Beauty Connect
-          </span>
-        </Link>
-        <nav className="flex items-center gap-2">
-          <Link
-            href="/login"
-            className="rounded-md px-3 py-2 text-sm text-muted-foreground hover:bg-muted hover:text-foreground"
-          >
-            Log in
           </Link>
-          <Link
-            href="/signup"
-            className="rounded-md bg-foreground px-4 py-2.5 text-sm font-medium text-background"
-          >
-            Get started
-          </Link>
-        </nav>
+
+          <nav className={styles.nav} aria-label="Main navigation">
+            <Link href="#how-it-works">How It Works</Link>
+            <Link href="#roles">For Salons</Link>
+            <Link href="#roles">For Workers</Link>
+            <Link href="#trust">Verification</Link>
+          </nav>
+
+          <div className={styles.headerActions}>
+            <Link href="/login" className={styles.loginLink}>
+              Log In
+            </Link>
+            <Link href="/signup" className={styles.primarySmall}>
+              Get Started <ArrowRight size={16} strokeWidth={2.4} />
+            </Link>
+          </div>
+        </div>
       </header>
-      <section className="mx-auto grid max-w-7xl gap-8 px-5 pb-16 pt-8 sm:px-8 sm:pt-16 lg:grid-cols-[1.02fr_0.98fr] lg:items-center lg:pb-24">
-        <div className="max-w-xl">
-          <p className="flex items-center gap-2 text-xs font-semibold uppercase tracking-[0.18em] text-muted-foreground">
-            <Sparkles className="size-3.5" /> A more thoughtful beauty
-            marketplace
-          </p>
-          <h1 className="mt-6 text-5xl font-semibold leading-[0.98] tracking-tight sm:text-7xl">
-            The right people make the work beautiful.
+
+      <section className={styles.hero}>
+        <div className={styles.heroInner}>
+          <div className={styles.eyebrow}>
+            <span className={styles.pulse} aria-hidden="true" />
+            <span>The 2026 Beauty Marketplace</span>
+            <span className={styles.dot}>•</span>
+            <span className={styles.eyebrowMuted}>
+              Verified Salons &amp; Stylists
+            </span>
+          </div>
+
+          <Image
+            src="/logo/logo.png"
+            alt="Beauty Connect logo"
+            width={104}
+            height={104}
+            priority
+            className={styles.heroLogo}
+          />
+
+          <h1 className={styles.heroTitle}>
+            Where <span className={styles.greenText}>Salons</span> Find Workers,
+            <br className={styles.desktopBreak} /> and{" "}
+            <span className={styles.gradientText}>Workers</span> Find Salons.
           </h1>
-          <p className="mt-6 max-w-lg text-base leading-7 text-muted-foreground sm:text-lg">
-            Beauty Connect helps salons find trusted beauty workers and helps
-            workers discover real opportunities.
+
+          <p className={styles.heroCopy}>
+            Instant matchmaking, verified profiles &amp; seamless direct and
+            mutual connections with zero friction.
           </p>
-          <div className="mt-8 flex flex-wrap gap-3">
-            <Link
-              href="/signup"
-              className="inline-flex min-h-11 items-center gap-2 bg-foreground px-5 text-sm font-medium text-background"
-            >
-              Get started <ArrowUpRight className="size-4" />
+
+          <div className={styles.heroActions}>
+            <Link href="/signup" className={styles.primaryButton}>
+              Get Started Free <ArrowRight size={18} strokeWidth={2.4} />
             </Link>
-            <Link
-              href="/login"
-              className="inline-flex min-h-11 items-center border border-border px-5 text-sm font-medium hover:bg-background"
-            >
-              Log in
+            <Link href="/login" className={styles.secondaryButton}>
+              <span className={styles.iconGreen}>
+                <ArrowRight size={20} strokeWidth={2.2} />
+              </span>
+              Log In to Account
             </Link>
           </div>
-        </div>
-        <div
-          className="relative min-h-[28rem] overflow-hidden bg-[#b8654e]"
-          style={{
-            backgroundImage:
-              "url('https://images.unsplash.com/photo-1522337360788-8b13dee7a37e?auto=format&fit=crop&w=1400&q=85')",
-            backgroundPosition: "center",
-            backgroundSize: "cover",
-          }}
-        >
-          <div className="absolute inset-0 bg-[#3c251d]/15" />
-          <div className="absolute bottom-5 left-5 max-w-[15rem] border-l-2 border-white/70 pl-4 text-sm leading-6 text-white">
-            Human skill, trusted connections, and a better way to find the next
-            opportunity.
+
+          <div className={styles.previewWrap}>
+            <div className={styles.previewGlow} aria-hidden="true" />
+            <div className={styles.previewCard}>
+              <div className={styles.previewHeader}>
+                <div>
+                  <div className={styles.previewKicker}>
+                    <Verified size={20} strokeWidth={2.2} />
+                    Two-Way Marketplace
+                  </div>
+                  <h2>Connect in Minutes</h2>
+                </div>
+                <div className={styles.previewTags}>
+                  <span className={styles.verifiedTag}>
+                    100% Verified Workers
+                  </span>
+                  <span className={styles.matchTag}>Direct Matching</span>
+                </div>
+              </div>
+
+              <div className={styles.previewGrid}>
+                <div className={styles.previewPanel}>
+                  <div className={styles.profileRow}>
+                    <div
+                      className={`${styles.avatarIcon} ${styles.avatarGreen}`}
+                    >
+                      <Store size={20} strokeWidth={2} />
+                    </div>
+                    <div>
+                      <div className={styles.profileKicker}>For Salons</div>
+                      <div className={styles.profileName}>Eldoret Parlour</div>
+                    </div>
+                    <span className={styles.statusGreen}>Hiring</span>
+                  </div>
+                  <p>Discover instant verified workers ready to be hired.</p>
+                  <div className={styles.panelFooter}>
+                    4 Verified Specialists Booked
+                  </div>
+                </div>
+
+                <div className={`${styles.previewPanel} ${styles.workerPanel}`}>
+                  <div className={styles.profileRow}>
+                    <img
+                      src="https://lh3.googleusercontent.com/aida-public/AB6AXuAWvbIuelTYagtvY_wuIhHZ3NzWoxWwBTu2p6ooyNSOseBHdIhW30fIzIk2ko7pR_slVdl1xh38BE2uLpukgXBi9pGVeGAU8PGYlJvRy1dNY1_ora4rja08fWd81ctnQ2Xn-f78-GWy4Iq8WQjArXfBIeuY0suOTCsweDup-yTY8-YibqH2dYMcTV6lrNx-s7eCTt-JhrFKcLJGb7UR467QiRrbAhc1aXkDjeDGq1SftC6r_qu7VrLtDA"
+                      alt="Jade Cherop"
+                      className={styles.workerImage}
+                    />
+                    <div>
+                      <div className={styles.profileKickerPurple}>
+                        For Workers
+                      </div>
+                      <div className={styles.profileName}>Jade Cherop</div>
+                    </div>
+                    <span className={styles.statusPurple}>
+                      Available for hire
+                    </span>
+                  </div>
+                  <p>Direct salon offers come straight to your dashboard.</p>
+                  <div className={styles.panelFooter}>
+                    42 Salons Viewed Your Profile
+                  </div>
+                </div>
+              </div>
+            </div>
           </div>
         </div>
       </section>
-      <section className="border-y border-border bg-background">
-        <div className="mx-auto max-w-7xl px-5 py-16 sm:px-8">
-          <div className="max-w-xl">
-            <p className="text-xs font-semibold uppercase tracking-[0.16em] text-muted-foreground">
-              How it works
+
+      <section id="how-it-works" className={styles.pathways}>
+        <div className={styles.contentWidth}>
+          <div className={styles.sectionIntro}>
+            <span className={styles.sectionKicker}>
+              Clear &amp; simple Process
+            </span>
+            <h2>How Beauty Connect Works</h2>
+            <p>
+              Step by step guidance for both salon owners seeking vetted workers
+              and beauty specialists finding opportunities.
             </p>
-            <h2 className="mt-3 text-3xl font-semibold tracking-tight sm:text-4xl">
-              A clearer path for both sides of the chair.
-            </h2>
           </div>
-          <div className="mt-10 grid gap-12 lg:grid-cols-2">
-            <Path title="For Workers" steps={steps.worker} />
-            <Path title="For Employers" steps={steps.employer} />
+
+          <div id="roles" className={styles.pathwayGrid}>
+            <Pathway
+              kind="worker"
+              icon={<Scissors size={24} strokeWidth={2} />}
+              kicker="Worker Track"
+              title="For Beauty Specialists"
+              audience="Stylists • Barbers • Estheticians"
+              steps={workerSteps}
+              action="Join as a Specialist"
+            />
+            <Pathway
+              kind="salon"
+              icon={<Store size={24} strokeWidth={2} />}
+              kicker="Salon Track"
+              title="For Salon Owners"
+              audience="Spas • Parlours • Boutiques"
+              steps={salonSteps}
+              action="Register Your Salon"
+            />
           </div>
         </div>
       </section>
-      <section className="mx-auto grid max-w-7xl gap-12 px-5 py-16 sm:px-8 lg:grid-cols-[0.8fr_1.2fr] lg:items-center">
-        <div>
-          <ShieldCheck className="size-7" />
-          <h2 className="mt-5 text-3xl font-semibold tracking-tight">
-            Trust is part of the product.
-          </h2>
-          <p className="mt-4 max-w-md text-sm leading-6 text-muted-foreground">
-            Worker profiles are reviewed before they appear in the marketplace.
-            The goal is a more useful first conversation for salons and
-            professionals alike.
+
+      <section id="trust" className={styles.trustSection}>
+        <div className={styles.contentWidth}>
+          <div className={styles.trustIntro}>
+            <h2>Why Trust Us</h2>
+          </div>
+          <div className={styles.trustGrid}>
+            <Feature
+              tone="green"
+              icon={<ShieldCheck size={26} strokeWidth={2} />}
+              title="Vetted Professionals"
+              copy="Every specialist's profile is carefully reviewed to verify their experience, authenticity and professional standards."
+            />
+            <Feature
+              tone="purple"
+              icon={<LockKeyhole size={26} strokeWidth={2} />}
+              title="Mutual Interest Connection"
+              copy="No spam or unsolicited reach. Direct contact information is only shared when both the salon and the worker show interest."
+            />
+            <Feature
+              tone="green"
+              icon={<Zap size={26} strokeWidth={2} />}
+              title="Instant Agreements"
+              copy="Salons send offers, workers review and respond in seconds directly from mobile."
+            />
+          </div>
+        </div>
+      </section>
+
+      <section className={styles.ctaSection}>
+        <div className={styles.ctaCard}>
+          <div
+            className={`${styles.ctaGlow} ${styles.ctaGlowLeft}`}
+            aria-hidden="true"
+          />
+          <div
+            className={`${styles.ctaGlow} ${styles.ctaGlowRight}`}
+            aria-hidden="true"
+          />
+          <Handshake className={styles.ctaIcon} size={36} strokeWidth={1.8} />
+          <h2>Ready to elevate your beauty career or studio?</h2>
+          <p>
+            Join hundreds of hired professionals &amp; salons that hire
+            professionals seamlessly on Beauty Connect.
           </p>
-        </div>
-        <div className="grid gap-4 sm:grid-cols-3">
-          <TrustItem title="Reviewed profiles" />
-          <TrustItem title="Real opportunities" />
-          <TrustItem title="Human connections" />
-        </div>
-      </section>
-      <section className="bg-[#24211f] text-[#faf9f7]">
-        <div className="mx-auto flex max-w-7xl flex-col gap-6 px-5 py-14 sm:px-8 md:flex-row md:items-end md:justify-between">
-          <div>
-            <p className="text-xs font-semibold uppercase tracking-[0.16em] text-white/60">
-              Start here
-            </p>
-            <h2 className="mt-3 max-w-xl text-3xl font-semibold tracking-tight sm:text-4xl">
-              Bring your next good connection closer.
-            </h2>
+          <div className={styles.ctaActions}>
+            <Link href="/signup" className={styles.primaryButton}>
+              Get Started Now
+            </Link>
+            <Link href="/login" className={styles.secondaryButton}>
+              Log In to Account
+            </Link>
           </div>
-          <div className="flex flex-wrap gap-3">
-            <Link
-              href="/signup"
-              className="inline-flex min-h-11 items-center bg-[#faf9f7] px-5 text-sm font-medium text-[#24211f]"
-            >
-              Create an account
-            </Link>
-            <Link
-              href="/login"
-              className="inline-flex min-h-11 items-center border border-white/30 px-5 text-sm font-medium"
-            >
-              Log in
-            </Link>
+          <div className={styles.proofRow}>
+            <span>
+              <CheckCircle2 size={16} /> Free registration
+            </span>
+            <span>
+              <CheckCircle2 size={16} /> Verified workers
+            </span>
+            <span>
+              <CheckCircle2 size={16} /> Zero hidden fees
+            </span>
           </div>
         </div>
       </section>
-      <footer className="mx-auto flex max-w-7xl justify-between px-5 py-8 text-xs text-muted-foreground sm:px-8">
-        <span>Beauty Connect V1</span>
-        <span>Made for the beauty industry.</span>
+
+      <footer className={styles.footer}>
+        <div className={styles.footerInner}>
+          <Link href="/" className={styles.footerBrand}>
+            <span className={styles.footerMark} aria-hidden="true" />
+            Beauty Connect
+          </Link>
+          <nav className={styles.footerLinks} aria-label="Footer navigation">
+            <Link href="/terms">Terms &amp; Conditions</Link>
+            <Link href="/privacy">Privacy Policy</Link>
+            <Link href="#trust">Contact Support</Link>
+            <Link href="#trust">Trust &amp; Safety</Link>
+          </nav>
+          <span>© 2026 Beauty Connect. All rights reserved.</span>
+        </div>
       </footer>
     </main>
   );
 }
 
-function Path({ title, steps }: { title: string; steps: string[] }) {
+function Pathway({
+  kind,
+  icon,
+  kicker,
+  title,
+  audience,
+  steps,
+  action,
+}: {
+  kind: "worker" | "salon";
+  icon: React.ReactNode;
+  kicker: string;
+  title: string;
+  audience: string;
+  steps: string[][];
+  action: string;
+}) {
   return (
-    <div>
-      <h3 className="text-lg font-semibold">{title}</h3>
-      <ol className="mt-5 grid gap-4">
-        {steps.map((step, index) => (
-          <li
-            key={step}
-            className="flex items-center gap-4 border-t border-border pt-4 text-sm"
-          >
-            <span className="font-mono text-xs text-muted-foreground">
-              0{index + 1}
-            </span>
-            <span>{step}</span>
-          </li>
-        ))}
-      </ol>
+    <div
+      className={`${styles.pathwayCard} ${kind === "worker" ? styles.workerCard : styles.salonCard}`}
+    >
+      <div className={styles.pathwayGlow} aria-hidden="true" />
+      <div>
+        <div className={styles.pathwayHeader}>
+          <div className={styles.pathwayHeading}>
+            <div className={styles.pathwayIcon}>{icon}</div>
+            <div>
+              <span>{kicker}</span>
+              <h3>{title}</h3>
+            </div>
+          </div>
+          <span className={styles.audience}>{audience}</span>
+        </div>
+        <div className={styles.steps}>
+          {steps.map(([step, description], index) => (
+            <div className={styles.step} key={step}>
+              <div className={styles.stepNumber}>{index + 1}</div>
+              <div>
+                <h4>{step}</h4>
+                <p>{description}</p>
+              </div>
+            </div>
+          ))}
+        </div>
+      </div>
+      <Link href="/signup" className={styles.pathwayAction}>
+        {action} <ArrowRight size={17} strokeWidth={2.2} />
+      </Link>
     </div>
   );
 }
-function TrustItem({ title }: { title: string }) {
+
+function Feature({
+  tone,
+  icon,
+  title,
+  copy,
+}: {
+  tone: "green" | "purple";
+  icon: React.ReactNode;
+  title: string;
+  copy: string;
+}) {
   return (
-    <div className="border-t border-border pt-4">
-      <Check className="size-4" />
-      <p className="mt-4 text-sm font-medium">{title}</p>
+    <div className={styles.feature}>
+      <div
+        className={`${styles.featureIcon} ${tone === "green" ? styles.featureGreen : styles.featurePurple}`}
+      >
+        {icon}
+      </div>
+      <h3>{title}</h3>
+      <p>{copy}</p>
     </div>
   );
 }

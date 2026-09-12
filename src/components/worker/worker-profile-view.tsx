@@ -1,5 +1,6 @@
 import Link from "next/link";
 import Image from "next/image";
+import { Suspense } from "react";
 import {
   ArrowRight,
   BadgeCheck,
@@ -12,20 +13,31 @@ import {
   ShieldCheck,
   Sparkles,
 } from "lucide-react";
-import type { Category, WorkerProfile } from "@/lib/domain/beauty-connect";
+import type {
+  Category,
+  CompanyContact,
+  ReactivationRequest,
+  WorkerProfile,
+} from "@/lib/domain/beauty-connect";
 import type { Tables } from "@/types/database";
 import { env } from "@/config/env";
 import { calculateExperience, publicImageUrl } from "@/lib/utils";
 import { LinkButton, StatusPill } from "@/components/shared/ui";
+import { WorkerReactivationForm } from "@/components/worker/worker-reactivation-form";
+import { DeleteAccountForm } from "@/components/shared/delete-account-form";
 
 export function WorkerProfileView({
   profile,
   categories,
-  portfolio,
+  portfolioPromise,
+  reactivationRequest,
+  companyContact,
 }: {
   profile: WorkerProfile;
   categories: Category[];
-  portfolio: Tables<"worker_portfolio">[];
+  portfolioPromise: Promise<Tables<"worker_portfolio">[]>;
+  reactivationRequest: ReactivationRequest | null;
+  companyContact: CompanyContact;
 }) {
   const photo = publicImageUrl(
     env.supabase.url,
@@ -153,39 +165,16 @@ export function WorkerProfileView({
           </ProfileCard>
 
           <ProfileCard title="Portfolio" icon={<Sparkles className="size-5" />}>
-            {portfolio.length ? (
-              <div className="grid grid-cols-2 gap-3 sm:grid-cols-4">
-                {portfolio.map((item) => {
-                  const image = publicImageUrl(
-                    env.supabase.url,
-                    item.storage_bucket,
-                    item.storage_path,
-                  );
-                  return image ? (
-                    <div
-                      key={item.id}
-                      className="relative aspect-square overflow-hidden rounded-2xl"
-                    >
-                      <Image
-                        src={image}
-                        alt={item.alt_text || "Portfolio example"}
-                        fill
-                        sizes="(min-width: 1024px) 280px, (min-width: 640px) 40vw, 50vw"
-                        className="object-cover"
-                      />
-                    </div>
-                  ) : null;
-                })}
-              </div>
-            ) : (
-              <p className="text-sm leading-6 text-[#707a6d]">
-                Your approved portfolio images will appear here.
-              </p>
-            )}
+            <Suspense fallback={<PortfolioFallback />}>
+              <PortfolioContent portfolioPromise={portfolioPromise} />
+            </Suspense>
           </ProfileCard>
         </div>
 
         <aside className="grid content-start gap-5">
+          {profile.availability_status === "matched" ? (
+            <WorkerReactivationForm request={reactivationRequest} />
+          ) : null}
           <ProfileCard
             title="At a glance"
             icon={<BadgeCheck className="size-5" />}
@@ -236,6 +225,11 @@ export function WorkerProfileView({
                 label="Help centre"
               />
             </div>
+            <DeleteAccountForm
+              role="worker"
+              supportPhone={companyContact.phone}
+              supportEmail={companyContact.email}
+            />
           </ProfileCard>
         </aside>
       </div>
@@ -248,6 +242,67 @@ export function WorkerProfileView({
           Manage your profile <ArrowRight className="size-4" />
         </Link>
       </div>
+    </div>
+  );
+}
+
+async function PortfolioContent({
+  portfolioPromise,
+}: {
+  portfolioPromise: Promise<Tables<"worker_portfolio">[]>;
+}) {
+  try {
+    const portfolio = await portfolioPromise;
+    return portfolio.length ? (
+      <div className="grid grid-cols-2 gap-3 sm:grid-cols-4">
+        {portfolio.map((item) => {
+          const image = publicImageUrl(
+            env.supabase.url,
+            item.storage_bucket,
+            item.storage_path,
+          );
+          return image ? (
+            <div
+              key={item.id}
+              className="relative aspect-square overflow-hidden rounded-2xl"
+            >
+              <Image
+                src={image}
+                alt={item.alt_text || "Portfolio example"}
+                fill
+                sizes="(min-width: 1024px) 280px, (min-width: 640px) 40vw, 50vw"
+                className="object-cover"
+              />
+            </div>
+          ) : null;
+        })}
+      </div>
+    ) : (
+      <p className="text-sm leading-6 text-[#707a6d]">
+        Your approved portfolio images will appear here.
+      </p>
+    );
+  } catch {
+    return (
+      <p className="text-sm leading-6 text-[#707a6d]">
+        Portfolio images are temporarily unavailable.
+      </p>
+    );
+  }
+}
+
+function PortfolioFallback() {
+  return (
+    <div
+      className="grid grid-cols-2 gap-3 sm:grid-cols-4"
+      aria-label="Loading portfolio"
+    >
+      {["one", "two", "three", "four"].map((item) => (
+        <div
+          key={item}
+          className="aspect-square animate-pulse rounded-2xl bg-[#f0edef]"
+        />
+      ))}
     </div>
   );
 }
@@ -317,4 +372,3 @@ function formatCompensation(value: WorkerProfile["compensation_model"]) {
     ? "Salary + commission"
     : formatStatus(value);
 }
-

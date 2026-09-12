@@ -4,20 +4,31 @@ import {
   getCategories,
   getCurrentWorkerProfile,
   getCurrentWorkerPortfolio,
+  getCurrentWorkerReactivationRequest,
+  getCompanyContact,
 } from "@/lib/domain/beauty-connect";
 
 export default async function WorkerProfilePage() {
   try {
-    const [profile, categories, portfolio] = await Promise.all([
-      getCurrentWorkerProfile(),
-      getCategories(),
-      getCurrentWorkerPortfolio(),
-    ]);
+    const profilePromise = getCurrentWorkerProfile();
+    const categoriesPromise = getCategories();
+    const portfolioPromise = getCurrentWorkerPortfolio();
+    const reactivationRequestPromise = getCurrentWorkerReactivationRequest();
+    const companyContactPromise = getCompanyContact();
+    const [profile, categories, reactivationRequest, companyContact] =
+      await Promise.all([
+        profilePromise,
+        categoriesPromise,
+        reactivationRequestPromise,
+        companyContactPromise,
+      ]);
     return profile ? (
       <WorkerProfileView
         profile={profile}
         categories={categories}
-        portfolio={portfolio}
+        portfolioPromise={portfolioPromise}
+        reactivationRequest={reactivationRequest}
+        companyContact={companyContact}
       />
     ) : (
       <SetupState />

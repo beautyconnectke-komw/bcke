@@ -1,4 +1,5 @@
 import Link from "next/link";
+import { Suspense } from "react";
 import { ArrowDown, CheckCircle2, UserRound } from "lucide-react";
 import Image from "next/image";
 import {
@@ -20,10 +21,12 @@ export const dynamic = "force-dynamic";
 
 export default async function WorkerHomePage() {
   try {
-    const [profile, requests, analytics] = await Promise.all([
-      getCurrentWorkerProfile(),
-      getWorkerRequests(),
-      getWorkerProfileAnalytics(),
+    const profilePromise = getCurrentWorkerProfile();
+    const requestsPromise = getWorkerRequests();
+    const analyticsPromise = getWorkerProfileAnalytics();
+    const [profile, requests] = await Promise.all([
+      profilePromise,
+      requestsPromise,
     ]);
 
     if (!profile) {
@@ -106,41 +109,22 @@ export default async function WorkerHomePage() {
                   </span>
                   <span>Direct salon requests</span>
                 </div>
-                <Link
-                  href="/worker/profile"
-                  className="mt-2 inline-flex items-center gap-1 text-[11px] font-semibold text-[#035715] underline-offset-4 hover:underline"
+                <Suspense
+                  fallback={
+                    <span className="mt-2 inline-flex text-[11px] text-[#7a7478]">
+                      Profile reach loading…
+                    </span>
+                  }
                 >
-                  {analytics.uniqueEmployerViews} salons have seen your profile
-                  <ArrowDown className="size-3.5" />
-                </Link>
+                  <WorkerAnalyticsLink analyticsPromise={analyticsPromise} />
+                </Suspense>
               </div>
             </div>
           </section>
 
-          <section className="pt-7">
-            <div className="flex items-end justify-between gap-4">
-              <div>
-                <h2 className="text-lg font-semibold tracking-[-0.02em]">
-                  Your reach
-                </h2>
-                <p className="mt-1 text-xs text-[#7a7478]">Past 30 days</p>
-              </div>
-            </div>
-            <div className="mt-4 grid grid-cols-3 gap-2 sm:gap-3">
-              <Metric
-                label="Profile views"
-                value={analytics.totalProfileViews}
-              />
-              <Metric
-                label="Unique salons"
-                value={analytics.uniqueEmployerViews}
-              />
-              <Metric
-                label="This week"
-                value={`+${analytics.weeklyProfileViews}`}
-              />
-            </div>
-          </section>
+          <Suspense fallback={<WorkerAnalyticsFallback />}>
+            <WorkerAnalyticsSection analyticsPromise={analyticsPromise} />
+          </Suspense>
 
           <section className="pt-8">
             <div className="flex items-center justify-between gap-4">
@@ -178,6 +162,77 @@ export default async function WorkerHomePage() {
   } catch {
     return <SetupState />;
   }
+}
+
+type WorkerAnalyticsPromise = ReturnType<typeof getWorkerProfileAnalytics>;
+
+async function WorkerAnalyticsLink({
+  analyticsPromise,
+}: {
+  analyticsPromise: WorkerAnalyticsPromise;
+}) {
+  try {
+    const analytics = await analyticsPromise;
+    return (
+      <Link
+        href="/worker/profile"
+        className="mt-2 inline-flex items-center gap-1 text-[11px] font-semibold text-[#035715] underline-offset-4 hover:underline"
+      >
+        {analytics.uniqueEmployerViews} salons have seen your profile
+        <ArrowDown className="size-3.5" />
+      </Link>
+    );
+  } catch {
+    return null;
+  }
+}
+
+async function WorkerAnalyticsSection({
+  analyticsPromise,
+}: {
+  analyticsPromise: WorkerAnalyticsPromise;
+}) {
+  try {
+    const analytics = await analyticsPromise;
+    return (
+      <section className="pt-7">
+        <div className="flex items-end justify-between gap-4">
+          <div>
+            <h2 className="text-lg font-semibold tracking-[-0.02em]">
+              Your reach
+            </h2>
+            <p className="mt-1 text-xs text-[#7a7478]">Past 30 days</p>
+          </div>
+        </div>
+        <div className="mt-4 grid grid-cols-3 gap-2 sm:gap-3">
+          <Metric label="Profile views" value={analytics.totalProfileViews} />
+          <Metric label="Unique salons" value={analytics.uniqueEmployerViews} />
+          <Metric
+            label="This week"
+            value={`+${analytics.weeklyProfileViews}`}
+          />
+        </div>
+      </section>
+    );
+  } catch {
+    return null;
+  }
+}
+
+function WorkerAnalyticsFallback() {
+  return (
+    <section className="pt-7" aria-label="Loading profile reach">
+      <div className="h-6 w-32 animate-pulse rounded bg-[#eee5eb]" />
+      <div className="mt-4 grid grid-cols-3 gap-2 sm:gap-3">
+        {["one", "two", "three"].map((item) => (
+          <div
+            key={item}
+            className="h-24 animate-pulse rounded-2xl border border-[#eee5eb] bg-white"
+          />
+        ))}
+      </div>
+    </section>
+  );
 }
 
 function Metric({ label, value }: { label: string; value: number | string }) {

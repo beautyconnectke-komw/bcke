@@ -34,6 +34,20 @@ const analyticsMigration = readFileSync(
   ),
   "utf8",
 );
+const lifecycleMigration = readFileSync(
+  join(
+    process.cwd(),
+    "supabase/migrations/20260912100000_reactivation_and_connection_contacts.sql",
+  ),
+  "utf8",
+);
+const lifecycleSecurityMigration = readFileSync(
+  join(
+    process.cwd(),
+    "supabase/migrations/20260912103000_revoke_anon_reactivation_and_connection_helpers.sql",
+  ),
+  "utf8",
+);
 
 describe("Supabase migration contract", () => {
   it("models account role, worker verification, and availability separately", () => {
@@ -200,6 +214,36 @@ describe("Supabase migration contract", () => {
     expect(analyticsMigration).toContain("interval '24 hours'");
     expect(analyticsMigration).toContain(
       "create or replace function public.bc_get_worker_profile_analytics",
+    );
+  });
+
+  it("keeps reactivation behind admin review and unlocks contacts only after handshakes", () => {
+    expect(lifecycleMigration).toContain(
+      "create table public.worker_reactivation_requests",
+    );
+    expect(lifecycleMigration).toContain(
+      "create unique index worker_reactivation_requests_one_pending",
+    );
+    expect(lifecycleMigration).toMatch(
+      /bc_request_worker_reactivation[\s\S]+availability_status = 'matched'[\s\S]+for update;/,
+    );
+    expect(lifecycleMigration).toMatch(
+      /bc_approve_worker_reactivation[\s\S]+status = 'expired'[\s\S]+status in \('pending', 'considering'\)/,
+    );
+    expect(lifecycleMigration).toContain(
+      "create or replace function public.worker_can_view_employer_profile",
+    );
+    expect(lifecycleMigration).toContain(
+      "handshake.status in ('matched', 'completed')",
+    );
+    expect(lifecycleMigration).toContain(
+      "grant select on public.public_employer_profiles to anon, authenticated",
+    );
+    expect(lifecycleSecurityMigration).toContain(
+      "revoke execute on function public.bc_request_worker_reactivation(text) from anon",
+    );
+    expect(lifecycleSecurityMigration).toContain(
+      "revoke execute on function public.employer_can_view_worker_profile(uuid) from anon",
     );
   });
 });

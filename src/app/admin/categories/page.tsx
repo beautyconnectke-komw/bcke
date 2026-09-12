@@ -1,7 +1,10 @@
 import { getAdminCategories } from "@/lib/domain/beauty-connect";
 import { CategoryForm } from "@/components/admin/category-form";
 import { CategoryToggle } from "@/components/admin/admin-actions";
+import { CategoryImageEditor } from "@/components/admin/category-image-editor";
 import { SectionHeading, SetupState } from "@/components/shared/ui";
+import { env } from "@/config/env";
+import { publicImageUrl } from "@/lib/utils";
 
 export default async function AdminCategoriesPage() {
   try {
@@ -20,13 +23,22 @@ export default async function AdminCategoriesPage() {
           {categories.map((category) => (
             <div
               key={category.id}
-              className="flex flex-wrap items-center justify-between gap-4 border border-border bg-background p-5"
+              className="grid gap-4 border border-border bg-background p-5 md:grid-cols-[minmax(0,1fr)_auto] md:items-center"
             >
-              <div>
-                <h2 className="font-semibold">{category.name}</h2>
-                <p className="mt-1 text-sm text-muted-foreground">
-                  {category.slug} · order {category.display_order}
-                </p>
+              <div className="flex min-w-0 flex-wrap items-start gap-4">
+                <CategoryImageEditor
+                  categoryId={category.id}
+                  categoryName={category.name}
+                  imagePath={category.image_path}
+                  imageUrl={publicImageUrl(
+                    env.supabase.url,
+                    "speciality-images",
+                    category.image_path,
+                  )}
+                />
+                <div className="min-w-[10rem] pt-1">
+                  <h2 className="font-semibold">{category.name}</h2>
+                </div>
               </div>
               <CategoryToggle
                 categoryId={category.id}

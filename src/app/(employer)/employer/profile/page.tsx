@@ -3,16 +3,24 @@ import { SetupState } from "@/components/shared/ui";
 import {
   getCurrentEmployerGallery,
   getCurrentEmployerProfile,
+  getCompanyContact,
 } from "@/lib/domain/beauty-connect";
 
 export default async function EmployerProfilePage() {
   try {
-    const [profile, gallery] = await Promise.all([
-      getCurrentEmployerProfile(),
-      getCurrentEmployerGallery(),
+    const profilePromise = getCurrentEmployerProfile();
+    const galleryPromise = getCurrentEmployerGallery();
+    const companyContactPromise = getCompanyContact();
+    const [profile, companyContact] = await Promise.all([
+      profilePromise,
+      companyContactPromise,
     ]);
     return profile ? (
-      <EmployerProfileView profile={profile} gallery={gallery} />
+      <EmployerProfileView
+        profile={profile}
+        galleryPromise={galleryPromise}
+        companyContact={companyContact}
+      />
     ) : (
       <SetupState />
     );

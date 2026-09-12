@@ -1,5 +1,9 @@
-import { getAdminEmailWhitelist } from "@/lib/domain/beauty-connect";
 import {
+  getAdminEmailWhitelist,
+  getCompanyContact,
+} from "@/lib/domain/beauty-connect";
+import {
+  AdminCompanyContactForm,
   AdminWhitelistForm,
   AdminWhitelistRemove,
 } from "@/components/admin/admin-controls";
@@ -7,7 +11,10 @@ import { SectionHeading, SetupState } from "@/components/shared/ui";
 
 export default async function AdminSettingsPage() {
   try {
-    const whitelist = await getAdminEmailWhitelist();
+    const [whitelist, companyContact] = await Promise.all([
+      getAdminEmailWhitelist(),
+      getCompanyContact(),
+    ]);
     return (
       <div className="max-w-3xl">
         <SectionHeading
@@ -15,6 +22,16 @@ export default async function AdminSettingsPage() {
           title="Settings"
           description="Manage the email addresses allowed to become Beauty Connect administrators."
         />
+        <section className="mt-8 grid gap-5 border border-border bg-background p-6">
+          <div>
+            <h2 className="font-semibold">Company contact details</h2>
+            <p className="mt-2 text-sm leading-6 text-muted-foreground">
+              These details are shown to users who request account deletion so
+              they can contact Beauty Connect during the 30-day recovery period.
+            </p>
+          </div>
+          <AdminCompanyContactForm contact={companyContact} />
+        </section>
         <section className="mt-8 grid gap-5 border border-border bg-background p-6">
           <div>
             <h2 className="font-semibold">Admin email whitelist</h2>

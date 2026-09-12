@@ -19,11 +19,18 @@ import {
   updateWorkerProfile,
   updateWorkerAvailability,
   createCategory,
+  updateCategoryImage,
   toggleCategory,
   addAdminEmail,
   removeAdminEmail,
   setFeaturedWorkers,
   recordWorkerProfileView,
+  requestWorkerReactivation,
+  approveWorkerReactivation,
+  declineWorkerReactivation,
+  requestAccountDeletion,
+  updateCompanyContact,
+  verifyAccountPassword,
 } from "@/lib/domain/beauty-connect";
 import type {
   AdminEmployerDecisionInput,
@@ -35,12 +42,14 @@ import type {
   WorkerReviewedProfileInput,
   WorkerApplicationInput,
   WorkerApplicationSubmissionInput,
+  WorkerReactivationRequestInput,
 } from "@/lib/validations/beauty-connect";
 import { createClient } from "@/lib/supabase/server";
 import { DomainError } from "@/lib/domain/errors";
 import type {
   AdminEmailInput,
   CategoryInput,
+  CompanyContactInput,
   FeaturedWorkerIdsInput,
 } from "@/lib/validations/admin";
 
@@ -65,6 +74,13 @@ export async function createCategoryAction(input: CategoryInput) {
   return createCategory(input);
 }
 
+export async function updateCategoryImageAction(
+  categoryId: string,
+  imagePath: string | null,
+) {
+  return updateCategoryImage(categoryId, imagePath);
+}
+
 export async function toggleCategoryAction(
   categoryId: string,
   isActive: boolean,
@@ -78,6 +94,18 @@ export async function addAdminEmailAction(input: AdminEmailInput) {
 
 export async function removeAdminEmailAction(email: string) {
   return removeAdminEmail(email);
+}
+
+export async function updateCompanyContactAction(input: CompanyContactInput) {
+  return updateCompanyContact(input);
+}
+
+export async function verifyAccountPasswordAction(password: string) {
+  return verifyAccountPassword(password);
+}
+
+export async function requestAccountDeletionAction(password: string) {
+  return requestAccountDeletion(password);
 }
 
 export async function setFeaturedWorkersAction(
@@ -146,6 +174,23 @@ export async function respondToWorkerRequestAction(
 
 export async function completeHandshakeAction(requestId: string) {
   return completeHandshake(requestId);
+}
+
+export async function requestWorkerReactivationAction(
+  input: WorkerReactivationRequestInput,
+) {
+  return requestWorkerReactivation(input);
+}
+
+export async function approveWorkerReactivationAction(requestId: string) {
+  return approveWorkerReactivation(requestId);
+}
+
+export async function declineWorkerReactivationAction(
+  requestId: string,
+  reason?: string | null,
+) {
+  return declineWorkerReactivation(requestId, reason);
 }
 
 export async function markNotificationReadAction(notificationId: string) {

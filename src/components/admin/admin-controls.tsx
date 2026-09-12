@@ -5,9 +5,85 @@ import {
   addAdminEmailAction,
   removeAdminEmailAction,
   setFeaturedWorkersAction,
+  updateCompanyContactAction,
 } from "@/app/actions/beauty-connect";
-import type { AdminWorker } from "@/lib/domain/beauty-connect";
+import type { AdminWorker, CompanyContact } from "@/lib/domain/beauty-connect";
 import { Button } from "@/components/shared/ui";
+
+export function AdminCompanyContactForm({
+  contact,
+}: {
+  contact: CompanyContact;
+}) {
+  const [phone, setPhone] = useState(contact.phone ?? "");
+  const [email, setEmail] = useState(contact.email ?? "");
+  const [busy, setBusy] = useState(false);
+  const [message, setMessage] = useState<string | null>(null);
+  const [error, setError] = useState<string | null>(null);
+
+  async function submit(event: React.FormEvent<HTMLFormElement>) {
+    event.preventDefault();
+    setBusy(true);
+    setMessage(null);
+    setError(null);
+    try {
+      await updateCompanyContactAction({
+        phone: phone || null,
+        email: email || null,
+      });
+      setMessage("Company contact details saved.");
+    } catch (caught) {
+      setError(
+        caught instanceof Error
+          ? caught.message
+          : "Could not save the company contact details.",
+      );
+    } finally {
+      setBusy(false);
+    }
+  }
+
+  return (
+    <form onSubmit={submit} className="grid gap-4 sm:grid-cols-2">
+      <label className="grid gap-2 text-sm font-medium">
+        Company phone number
+        <input
+          type="tel"
+          value={phone}
+          onChange={(event) => setPhone(event.target.value)}
+          className="field"
+          placeholder="e.g. +254 700 000 000"
+          maxLength={40}
+        />
+      </label>
+      <label className="grid gap-2 text-sm font-medium">
+        Company email address
+        <input
+          type="email"
+          value={email}
+          onChange={(event) => setEmail(event.target.value)}
+          className="field"
+          placeholder="support@beautyconnect.co.ke"
+        />
+      </label>
+      <div className="flex flex-wrap items-center gap-3 sm:col-span-2">
+        <Button disabled={busy}>
+          {busy ? "Saving..." : "Save contact details"}
+        </Button>
+        {message ? (
+          <p className="text-sm text-emerald-700" aria-live="polite">
+            {message}
+          </p>
+        ) : null}
+        {error ? (
+          <p className="text-sm text-red-700" aria-live="polite">
+            {error}
+          </p>
+        ) : null}
+      </div>
+    </form>
+  );
+}
 
 export function AdminWhitelistForm() {
   const [email, setEmail] = useState("");

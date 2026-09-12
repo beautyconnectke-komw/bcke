@@ -81,11 +81,21 @@ export function WorkerRequestCard({
         )}
         <StatusPill tone={tone}>{request.status}</StatusPill>
       </div>
-      <p className="mt-4 text-sm leading-6 text-[#7a7478]">
-        {request.message ||
-          employer?.description ||
-          "This employer would like to connect about an opportunity."}
-      </p>
+      {request.message ? (
+        <div className="mt-4 rounded-xl bg-[#fff8fc] px-3.5 py-3">
+          <p className="text-xs font-semibold uppercase tracking-[0.12em] text-[#7a7478]">
+            Employer&apos;s note
+          </p>
+          <p className="mt-1 text-sm leading-6 text-[#514d50]">
+            {request.message}
+          </p>
+        </div>
+      ) : (
+        <p className="mt-4 text-sm leading-6 text-[#7a7478]">
+          {employer?.description ||
+            "This employer would like to connect about an opportunity."}
+        </p>
+      )}
       {request.status === "pending" || request.status === "considering" ? (
         <div className="mt-5">
           <WorkerRequestActions requestId={request.id} />

@@ -3,6 +3,8 @@
 import { useState } from "react";
 import {
   approveWorkerAction,
+  approveWorkerReactivationAction,
+  declineWorkerReactivationAction,
   rejectWorkerAction,
   restoreWorkerAction,
   suspendWorkerAction,
@@ -104,5 +106,51 @@ export function CategoryToggle({
     <Button variant="secondary" disabled={busy} onClick={toggle}>
       {active ? "Deactivate" : "Activate"}
     </Button>
+  );
+}
+
+export function ReactivationReviewActions({
+  requestId,
+}: {
+  requestId: string;
+}) {
+  const [busy, setBusy] = useState(false);
+  const [error, setError] = useState<string | null>(null);
+
+  async function review(action: "approve" | "decline") {
+    setBusy(true);
+    setError(null);
+    try {
+      if (action === "approve") {
+        await approveWorkerReactivationAction(requestId);
+      } else {
+        await declineWorkerReactivationAction(
+          requestId,
+          "Please remain off-market until you are ready to accept new opportunities.",
+        );
+      }
+      window.location.reload();
+    } catch (caught) {
+      setError(caught instanceof Error ? caught.message : "Action failed.");
+      setBusy(false);
+    }
+  }
+
+  return (
+    <div className="flex flex-wrap gap-2">
+      <Button disabled={busy} onClick={() => review("approve")}>
+        Approve reactivation
+      </Button>
+      <Button
+        disabled={busy}
+        variant="secondary"
+        onClick={() => review("decline")}
+      >
+        Decline
+      </Button>
+      {error ? (
+        <p className="basis-full text-sm text-red-700">{error}</p>
+      ) : null}
+    </div>
   );
 }

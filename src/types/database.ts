@@ -15,6 +15,8 @@ export type Database = {
           role: Database["public"]["Enums"]["profile_role"] | null;
           display_name: string | null;
           phone: string | null;
+          account_deletion_requested_at: string | null;
+          account_deletion_scheduled_for: string | null;
           created_at: string;
           updated_at: string;
         };
@@ -23,6 +25,8 @@ export type Database = {
           role?: Database["public"]["Enums"]["profile_role"] | null;
           display_name?: string | null;
           phone?: string | null;
+          account_deletion_requested_at?: string | null;
+          account_deletion_scheduled_for?: string | null;
           created_at?: string;
           updated_at?: string;
         };
@@ -31,6 +35,8 @@ export type Database = {
           role?: Database["public"]["Enums"]["profile_role"] | null;
           display_name?: string | null;
           phone?: string | null;
+          account_deletion_requested_at?: string | null;
+          account_deletion_scheduled_for?: string | null;
           created_at?: string;
           updated_at?: string;
         };
@@ -43,6 +49,7 @@ export type Database = {
           slug: string;
           is_active: boolean;
           display_order: number;
+          image_path: string | null;
           created_at: string;
           updated_at: string;
         };
@@ -52,6 +59,7 @@ export type Database = {
           slug: string;
           is_active?: boolean;
           display_order?: number;
+          image_path?: string | null;
           created_at?: string;
           updated_at?: string;
         };
@@ -61,6 +69,7 @@ export type Database = {
           slug?: string;
           is_active?: boolean;
           display_order?: number;
+          image_path?: string | null;
           created_at?: string;
           updated_at?: string;
         };
@@ -78,6 +87,66 @@ export type Database = {
         Update: {
           email?: string;
           created_at?: string;
+        };
+        Relationships: [];
+      };
+      company_settings: {
+        Row: {
+          id: number;
+          phone: string | null;
+          email: string | null;
+          updated_by: string | null;
+          created_at: string;
+          updated_at: string;
+        };
+        Insert: {
+          id?: number;
+          phone?: string | null;
+          email?: string | null;
+          updated_by?: string | null;
+          created_at?: string;
+          updated_at?: string;
+        };
+        Update: {
+          id?: number;
+          phone?: string | null;
+          email?: string | null;
+          updated_by?: string | null;
+          created_at?: string;
+          updated_at?: string;
+        };
+        Relationships: [];
+      };
+      account_deletion_requests: {
+        Row: {
+          id: string;
+          profile_id: string | null;
+          email: string;
+          requested_at: string;
+          scheduled_for: string;
+          status: string;
+          cancelled_at: string | null;
+          completed_at: string | null;
+        };
+        Insert: {
+          id?: string;
+          profile_id?: string | null;
+          email: string;
+          requested_at?: string;
+          scheduled_for: string;
+          status?: string;
+          cancelled_at?: string | null;
+          completed_at?: string | null;
+        };
+        Update: {
+          id?: string;
+          profile_id?: string | null;
+          email?: string;
+          requested_at?: string;
+          scheduled_for?: string;
+          status?: string;
+          cancelled_at?: string | null;
+          completed_at?: string | null;
         };
         Relationships: [];
       };
@@ -325,6 +394,36 @@ export type Database = {
         };
         Relationships: [];
       };
+      worker_reactivation_requests: {
+        Row: {
+          id: string;
+          worker_profile_id: string;
+          reason: string | null;
+          status: Database["public"]["Enums"]["reactivation_request_status"];
+          reviewed_at: string | null;
+          created_at: string;
+          updated_at: string;
+        };
+        Insert: {
+          id?: string;
+          worker_profile_id: string;
+          reason?: string | null;
+          status?: Database["public"]["Enums"]["reactivation_request_status"];
+          reviewed_at?: string | null;
+          created_at?: string;
+          updated_at?: string;
+        };
+        Update: {
+          id?: string;
+          worker_profile_id?: string;
+          reason?: string | null;
+          status?: Database["public"]["Enums"]["reactivation_request_status"];
+          reviewed_at?: string | null;
+          created_at?: string;
+          updated_at?: string;
+        };
+        Relationships: [];
+      };
       employer_requests: {
         Row: {
           id: string;
@@ -463,6 +562,30 @@ export type Database = {
         };
         Relationships: [];
       };
+      website_visits: {
+        Row: {
+          id: string;
+          visitor_id: string;
+          session_id: string;
+          path: string;
+          created_at: string;
+        };
+        Insert: {
+          id?: string;
+          visitor_id: string;
+          session_id: string;
+          path: string;
+          created_at?: string;
+        };
+        Update: {
+          id?: string;
+          visitor_id?: string;
+          session_id?: string;
+          path?: string;
+          created_at?: string;
+        };
+        Relationships: [];
+      };
     };
     Views: {
       public_worker_profiles: {
@@ -497,8 +620,6 @@ export type Database = {
         Row: {
           id: string;
           business_name: string;
-          phone: string | null;
-          business_email: string | null;
           description: string | null;
           location: string | null;
           address_line: string | null;
@@ -660,9 +781,37 @@ export type Database = {
         Args: { p_email: string };
         Returns: undefined;
       };
+      bc_update_company_settings: {
+        Args: { p_phone?: string | null; p_email?: string | null };
+        Returns: undefined;
+      };
+      bc_request_account_deletion: {
+        Args: Record<string, never>;
+        Returns: string;
+      };
+      bc_cancel_account_deletion: {
+        Args: { p_profile_id: string };
+        Returns: undefined;
+      };
       bc_set_featured_workers: {
         Args: { p_worker_profile_ids: string[] };
         Returns: undefined;
+      };
+      bc_request_worker_reactivation: {
+        Args: { p_reason?: string | null };
+        Returns: string;
+      };
+      bc_approve_worker_reactivation: {
+        Args: { p_request_id: string };
+        Returns: undefined;
+      };
+      bc_decline_worker_reactivation: {
+        Args: { p_request_id: string; p_reason?: string | null };
+        Returns: undefined;
+      };
+      bc_get_speciality_carousel: {
+        Args: Record<string, never>;
+        Returns: Database["public"]["Tables"]["categories"]["Row"][];
       };
     };
     Enums: {
@@ -684,6 +833,7 @@ export type Database = {
         | "cancelled"
         | "expired";
       handshake_status: "matched" | "completed" | "cancelled";
+      reactivation_request_status: "pending" | "approved" | "declined";
       notification_type:
         | "application_submitted"
         | "application_approved"

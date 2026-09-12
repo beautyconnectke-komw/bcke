@@ -1,6 +1,6 @@
 import Link from "next/link";
 import Image from "next/image";
-import { ArrowLeft, MapPin, UserRound } from "lucide-react";
+import { ArrowLeft, MapPin, Phone, UserRound } from "lucide-react";
 import {
   getWorkerPortfolio,
   getWorkerProfile,
@@ -140,6 +140,18 @@ export default async function WorkerDetailPage({
                     : ""}
                 </p>
               </div>
+              {worker.contact_unlocked && worker.phone ? (
+                <div>
+                  <h2 className="text-lg font-semibold">Contact</h2>
+                  <p className="mt-3 flex items-center gap-2 text-sm text-muted-foreground">
+                    <Phone className="size-4" /> {worker.phone}
+                  </p>
+                  <p className="mt-2 text-xs text-muted-foreground">
+                    Contact details are available because you have an accepted
+                    connection with this worker.
+                  </p>
+                </div>
+              ) : null}
               <div>
                 <h2 className="text-lg font-semibold">Portfolio</h2>
                 {portfolio.length ? (

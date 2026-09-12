@@ -1,54 +1,30 @@
-import Link from "next/link";
-import { getAdminMetrics } from "@/lib/domain/beauty-connect";
-import { SectionHeading, SetupState } from "@/components/shared/ui";
+import { AdminDashboard } from "@/components/admin/admin-dashboard";
+import {
+  getAdminDashboardData,
+  parseDashboardRange,
+} from "@/lib/domain/admin-dashboard";
+import { getAuthContext } from "@/lib/domain/auth";
+import { ErrorState, SetupState } from "@/components/shared/ui";
 
-export default async function AdminDashboardPage() {
+export default async function AdminDashboardPage({
+  searchParams,
+}: {
+  searchParams: Promise<{ range?: string | string[] | undefined }>;
+}) {
+  const params = await searchParams;
+  const range = parseDashboardRange(params.range);
+
   try {
-    const metrics = await getAdminMetrics();
-    const items = [
-      ["Total workers", metrics.workers, "/admin/workers"],
-      ["Pending applications", metrics.pending, "/admin/applications"],
-      ["Approved and live", metrics.approved, "/admin/workers"],
-      ["Active employers", metrics.employers, "/admin/employers"],
-      ["Active requests", metrics.requests, "/admin/handshakes"],
-      ["Successful handshakes", metrics.handshakes, "/admin/handshakes"],
-    ] as const;
-    return (
-      <div>
-        <SectionHeading
-          eyebrow="Admin overview"
-          title="Keep the marketplace healthy"
-          description="Real-time counts from the Beauty Connect database."
-        />
-        <div className="mt-8 grid gap-3 sm:grid-cols-2 lg:grid-cols-3">
-          {items.map(([label, value, href]) => (
-            <Link
-              key={label}
-              href={href}
-              className="border border-border bg-background p-5 hover:border-foreground"
-            >
-              <p className="text-sm text-muted-foreground">{label}</p>
-              <p className="mt-4 text-4xl font-semibold">{value}</p>
-            </Link>
-          ))}
-        </div>
-        <div className="mt-10 border border-border bg-background p-6">
-          <h2 className="text-lg font-semibold">Review queue</h2>
-          <p className="mt-2 text-sm leading-6 text-muted-foreground">
-            Pending applications are the most important next action. Review the
-            worker’s information and approve only when it is ready to be
-            visible.
-          </p>
-          <Link
-            href="/admin/applications"
-            className="mt-5 inline-flex text-sm font-medium underline underline-offset-4"
-          >
-            Open applications →
-          </Link>
-        </div>
-      </div>
-    );
-  } catch {
-    return <SetupState />;
+    const [data, auth] = await Promise.all([
+      getAdminDashboardData(range),
+      getAuthContext(),
+    ]);
+    return <AdminDashboard data={data} displayName={auth.profile?.display_name} />;
+  } catch (error) {
+    const message = error instanceof Error ? error.message : "The dashboard could not be loaded.";
+    if (message.includes("Supabase environment configuration")) {
+      return <SetupState />;
+    }
+    return <ErrorState message="We could not load the admin analytics right now. Please refresh and try again." />;
   }
 }

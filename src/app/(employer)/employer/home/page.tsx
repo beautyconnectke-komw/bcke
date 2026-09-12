@@ -11,11 +11,16 @@ import {
 import {
   getCurrentEmployerProfile,
   getFeaturedWorkers,
+  getSpecialityCarouselCategories,
   type WorkerMarketplaceItem,
 } from "@/lib/domain/beauty-connect";
 import { env } from "@/config/env";
 import { publicImageUrl } from "@/lib/utils";
 import { EmptyState, LinkButton, SetupState } from "@/components/shared/ui";
+import {
+  SpecialityCarousel,
+  type SpecialityCarouselItem,
+} from "@/components/employer/speciality-carousel";
 
 export default async function EmployerHomePage() {
   try {
@@ -23,6 +28,7 @@ export default async function EmployerHomePage() {
     // profile. The profile header can stream as soon as auth/profile data is
     // ready while featured cards continue loading in the background.
     const workersPromise = getFeaturedWorkers();
+    const categoriesPromise = getSpecialityCarouselCategories();
     const profile = await getCurrentEmployerProfile();
 
     if (!profile) {
@@ -68,6 +74,10 @@ export default async function EmployerHomePage() {
             </div>
           </section>
 
+          <Suspense fallback={<SpecialityCarouselFallback />}>
+            <SpecialityCarouselSection categoriesPromise={categoriesPromise} />
+          </Suspense>
+
           <Suspense fallback={<FeaturedWorkersFallback />}>
             <FeaturedWorkersSection workersPromise={workersPromise} />
           </Suspense>
@@ -109,6 +119,50 @@ export default async function EmployerHomePage() {
   } catch {
     return <SetupState />;
   }
+}
+
+async function SpecialityCarouselSection({
+  categoriesPromise,
+}: {
+  categoriesPromise: Promise<
+    Awaited<ReturnType<typeof getSpecialityCarouselCategories>>
+  >;
+}) {
+  try {
+    const categories = await categoriesPromise;
+    const items: SpecialityCarouselItem[] = categories.map((category) => ({
+      id: category.id,
+      name: category.name,
+      imageUrl: publicImageUrl(
+        env.supabase.url,
+        "speciality-images",
+        category.image_path,
+      ),
+    }));
+    return <SpecialityCarousel categories={items} />;
+  } catch {
+    return null;
+  }
+}
+
+function SpecialityCarouselFallback() {
+  return (
+    <section
+      className="mt-8 border-y border-[#eadfe7] py-7"
+      aria-label="Loading specialities"
+    >
+      <div className="h-3 w-32 animate-pulse rounded bg-[#eadfe7]" />
+      <div className="mt-2 h-6 w-56 animate-pulse rounded bg-[#eadfe7]" />
+      <div className="mt-4 flex gap-3 overflow-hidden">
+        {["one", "two", "three"].map((item) => (
+          <div
+            key={item}
+            className="min-w-[220px] aspect-[1.45] animate-pulse rounded-2xl bg-[#f3eef1]"
+          />
+        ))}
+      </div>
+    </section>
+  );
 }
 
 async function FeaturedWorkersSection({

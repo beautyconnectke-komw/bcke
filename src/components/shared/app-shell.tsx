@@ -1,8 +1,10 @@
 "use client";
 
 import Link from "next/link";
+import Image from "next/image";
 import { usePathname, useRouter } from "next/navigation";
 import {
+  ArrowLeft,
   Bell,
   BriefcaseBusiness,
   CircleUserRound,
@@ -11,8 +13,10 @@ import {
   Menu,
   ShieldCheck,
   Star,
+  Tags,
   UserRound,
 } from "lucide-react";
+import { useQueryClient } from "@tanstack/react-query";
 import { useState } from "react";
 import { createClient } from "@/lib/supabase/client";
 import { cn } from "@/lib/utils";
@@ -153,10 +157,12 @@ export function AdminShell({
 }) {
   const pathname = usePathname();
   const router = useRouter();
+  const queryClient = useQueryClient();
   const items = [
     ["/admin/dashboard", "Dashboard", Home],
     ["/admin/applications", "Applications", BriefcaseBusiness],
     ["/admin/workers", "Workers", UserRound],
+    ["/admin/categories", "Specialities", Tags],
     ["/admin/featured", "Featured", Star],
     ["/admin/employers", "Employers", BriefcaseBusiness],
     ["/admin/handshakes", "Handshakes", ShieldCheck],
@@ -165,58 +171,84 @@ export function AdminShell({
   ] as const;
   async function signOut() {
     await createClient().auth.signOut();
+    queryClient.clear();
     router.push("/");
     router.refresh();
   }
   return (
-    <div className="min-h-svh bg-[#faf9f7]">
-      <header className="border-b border-border bg-background">
-        <div className="mx-auto flex max-w-7xl items-center justify-between px-5 py-4 sm:px-8">
-          <Link href="/admin/dashboard" className="flex items-center gap-3">
-            <span className="grid size-8 place-items-center bg-foreground text-xs font-bold text-background">
-              BC
-            </span>
-            <span className="text-sm font-semibold">
-              Admin / Beauty Connect
-            </span>
-          </Link>
-          <div className="flex items-center gap-4">
-            <span className="hidden text-sm text-muted-foreground sm:inline">
+    <div className="min-h-svh bg-[#fcf8fb] text-[#1b1b1d]">
+      <header className="fixed top-0 z-50 w-full border-b border-[#f0edef] bg-[#fcf8fb]/85 shadow-[0_1px_8px_rgba(0,0,0,0.04)] backdrop-blur-xl">
+        <div className="mx-auto flex h-16 max-w-7xl items-center justify-between px-4 sm:px-8">
+          <div className="flex items-center gap-2">
+            <button
+              type="button"
+              aria-label="Go back"
+              title="Go back"
+              onClick={() => router.back()}
+              className="grid size-10 place-items-center rounded-full text-[#1b1b1d] transition hover:bg-[#f0edef]"
+            >
+              <ArrowLeft className="size-4" />
+            </button>
+            <Link href="/admin/dashboard" className="flex items-center gap-2">
+              <Image
+                src="/logo/logo.png"
+                alt="Beauty Connect"
+                width={32}
+                height={32}
+                className="size-8 rounded-full object-contain"
+              />
+              <span className="text-sm font-bold tracking-tight text-[#003d0b]">
+                Beauty Connect
+              </span>
+            </Link>
+          </div>
+          <div className="flex items-center gap-3">
+            <span className="hidden text-xs font-medium text-[#40493e] sm:inline">
               {displayName || "Administrator"}
             </span>
             <button
               aria-label="Sign out"
               title="Sign out"
               onClick={signOut}
-              className="rounded-md p-2 text-muted-foreground hover:bg-muted"
+              className="grid size-9 place-items-center rounded-full bg-[#003d0b] text-white shadow-sm transition hover:bg-[#035715]"
             >
               <LogOut className="size-4" />
             </button>
           </div>
         </div>
       </header>
-      <div className="mx-auto flex max-w-7xl flex-col gap-8 px-5 py-8 sm:flex-row sm:px-8">
-        <aside className="sm:w-52">
-          <nav className="grid grid-cols-2 gap-1 sm:grid-cols-1">
-            {items.map(([href, label, Icon]) => (
-              <Link
-                key={href}
-                href={href}
-                className={cn(
-                  "flex items-center gap-2 rounded-md px-3 py-2 text-sm",
-                  pathname === href || pathname.startsWith(`${href}/`)
-                    ? "bg-foreground text-background"
-                    : "text-muted-foreground hover:bg-muted hover:text-foreground",
-                )}
-              >
-                <Icon className="size-4" />
-                {label}
-              </Link>
-            ))}
-          </nav>
-        </aside>
-        <main className="min-w-0 flex-1">{children}</main>
+      <div className="mx-auto max-w-7xl px-4 pb-20 pt-20 sm:px-8">
+        <nav
+          aria-label="Admin navigation"
+          className="mb-5 flex gap-1 overflow-x-auto rounded-xl border border-[#c0c9ba]/30 bg-[#f6f3f5] p-1"
+        >
+          {items.map(([href, label, Icon]) => (
+            <Link
+              key={href}
+              href={href}
+              prefetch={true}
+              className={cn(
+                "inline-flex shrink-0 items-center gap-1.5 rounded-lg px-3 py-2 text-xs font-semibold transition",
+                pathname === href || pathname.startsWith(`${href}/`)
+                  ? "bg-[#035715] text-white shadow-sm"
+                  : "text-[#40493e] hover:bg-white hover:text-[#003d0b]",
+              )}
+            >
+              <Icon className="size-3.5" />
+              {label}
+            </Link>
+          ))}
+        </nav>
+        <main className="min-w-0">{children}</main>
       </div>
+      <footer className="border-t border-[#f0edef] bg-[#fcf8fb]/90">
+        <div className="mx-auto flex max-w-7xl items-center justify-between gap-4 px-4 py-4 text-[11px] text-[#40493e] sm:px-8">
+          <span>© Beauty Connect Admin Console</span>
+          <span className="hidden sm:inline">
+            Protected operations workspace
+          </span>
+        </div>
+      </footer>
     </div>
   );
 }

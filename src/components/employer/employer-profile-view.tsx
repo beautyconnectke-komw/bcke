@@ -1,5 +1,6 @@
 import Link from "next/link";
 import Image from "next/image";
+import { Suspense } from "react";
 import {
   ArrowRight,
   BriefcaseBusiness,
@@ -12,18 +13,24 @@ import {
   ShieldCheck,
   Sparkles,
 } from "lucide-react";
-import type { EmployerProfile } from "@/lib/domain/beauty-connect";
+import type {
+  CompanyContact,
+  EmployerProfile,
+} from "@/lib/domain/beauty-connect";
 import type { Tables } from "@/types/database";
 import { env } from "@/config/env";
 import { publicImageUrl } from "@/lib/utils";
 import { LinkButton } from "@/components/shared/ui";
+import { DeleteAccountForm } from "@/components/shared/delete-account-form";
 
 export function EmployerProfileView({
   profile,
-  gallery,
+  galleryPromise,
+  companyContact,
 }: {
   profile: EmployerProfile;
-  gallery: Tables<"employer_gallery">[];
+  galleryPromise: Promise<Tables<"employer_gallery">[]>;
+  companyContact: CompanyContact;
 }) {
   const image = publicImageUrl(
     env.supabase.url,
@@ -117,35 +124,9 @@ export function EmployerProfileView({
             title="Salon gallery"
             icon={<ImageIcon className="size-5" />}
           >
-            {gallery.length ? (
-              <div className="grid grid-cols-2 gap-3 sm:grid-cols-4">
-                {gallery.map((item) => {
-                  const src = publicImageUrl(
-                    env.supabase.url,
-                    item.storage_bucket,
-                    item.storage_path,
-                  );
-                  return src ? (
-                    <div
-                      key={item.id}
-                      className="relative aspect-square overflow-hidden rounded-2xl"
-                    >
-                      <Image
-                        src={src}
-                        alt="Salon"
-                        fill
-                        sizes="(min-width: 1024px) 280px, (min-width: 640px) 40vw, 50vw"
-                        className="object-cover"
-                      />
-                    </div>
-                  ) : null;
-                })}
-              </div>
-            ) : (
-              <p className="text-sm leading-6 text-[#707a6d]">
-                Showcase your salon, team, and work with a few images.
-              </p>
-            )}
+            <Suspense fallback={<GalleryFallback />}>
+              <GalleryContent galleryPromise={galleryPromise} />
+            </Suspense>
           </ProfileCard>
         </div>
         <aside className="grid content-start gap-5">
@@ -192,6 +173,11 @@ export function EmployerProfileView({
                 label="Help centre"
               />
             </div>
+            <DeleteAccountForm
+              role="employer"
+              supportPhone={companyContact.phone}
+              supportEmail={companyContact.email}
+            />
           </ProfileCard>
         </aside>
       </div>
@@ -203,6 +189,67 @@ export function EmployerProfileView({
           Manage your profile <ArrowRight className="size-4" />
         </Link>
       </div>
+    </div>
+  );
+}
+
+async function GalleryContent({
+  galleryPromise,
+}: {
+  galleryPromise: Promise<Tables<"employer_gallery">[]>;
+}) {
+  try {
+    const gallery = await galleryPromise;
+    return gallery.length ? (
+      <div className="grid grid-cols-2 gap-3 sm:grid-cols-4">
+        {gallery.map((item) => {
+          const src = publicImageUrl(
+            env.supabase.url,
+            item.storage_bucket,
+            item.storage_path,
+          );
+          return src ? (
+            <div
+              key={item.id}
+              className="relative aspect-square overflow-hidden rounded-2xl"
+            >
+              <Image
+                src={src}
+                alt="Salon"
+                fill
+                sizes="(min-width: 1024px) 280px, (min-width: 640px) 40vw, 50vw"
+                className="object-cover"
+              />
+            </div>
+          ) : null;
+        })}
+      </div>
+    ) : (
+      <p className="text-sm leading-6 text-[#707a6d]">
+        Showcase your salon, team, and work with a few images.
+      </p>
+    );
+  } catch {
+    return (
+      <p className="text-sm leading-6 text-[#707a6d]">
+        Gallery images are temporarily unavailable.
+      </p>
+    );
+  }
+}
+
+function GalleryFallback() {
+  return (
+    <div
+      className="grid grid-cols-2 gap-3 sm:grid-cols-4"
+      aria-label="Loading gallery"
+    >
+      {["one", "two", "three", "four"].map((item) => (
+        <div
+          key={item}
+          className="aspect-square animate-pulse rounded-2xl bg-[#f0edef]"
+        />
+      ))}
     </div>
   );
 }

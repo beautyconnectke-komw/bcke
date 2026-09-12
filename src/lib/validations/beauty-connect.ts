@@ -90,6 +90,10 @@ export const respondToWorkerRequestSchema = z.object({
   response: workerRequestResponseSchema,
 });
 
+export const workerReactivationRequestSchema = z.object({
+  reason: z.string().trim().max(1000).nullable().optional(),
+});
+
 export const adminWorkerDecisionSchema = z.object({
   workerProfileId: uuidSchema,
   reason: z.string().trim().max(1000).nullable().optional(),
@@ -103,8 +107,13 @@ export const adminEmployerDecisionSchema = z.object({
 export const marketplaceFiltersSchema = z.object({
   search: z.string().trim().max(120).optional(),
   categoryId: uuidSchema.optional(),
+  extraSpecialtyId: uuidSchema.optional(),
+  county: z.string().trim().max(80).optional(),
   availability: z.enum(["available", "considering", "matched"]).optional(),
   minimumYearsExperience: z.number().int().min(0).max(80).optional(),
+  compensationModel: z
+    .enum(["salary", "commission", "salary_plus_commission"])
+    .optional(),
 });
 
 export const notificationIdSchema = z.object({
@@ -128,6 +137,9 @@ export type EmployerProfileInput = z.infer<typeof employerProfileSchema>;
 export type RequestWorkerInput = z.infer<typeof requestWorkerSchema>;
 export type RespondToWorkerRequestInput = z.infer<
   typeof respondToWorkerRequestSchema
+>;
+export type WorkerReactivationRequestInput = z.infer<
+  typeof workerReactivationRequestSchema
 >;
 export type AdminWorkerDecisionInput = z.infer<
   typeof adminWorkerDecisionSchema
