@@ -140,11 +140,12 @@ export default async function WorkerDetailPage({
                     : ""}
                 </p>
               </div>
-              {worker.contact_unlocked && worker.phone ? (
+              {worker.contact_unlocked ? (
                 <div>
                   <h2 className="text-lg font-semibold">Contact</h2>
                   <p className="mt-3 flex items-center gap-2 text-sm text-muted-foreground">
-                    <Phone className="size-4" /> {worker.phone}
+                    <Phone className="size-4" />
+                    {worker.phone || "Phone not provided"}
                   </p>
                   <p className="mt-2 text-xs text-muted-foreground">
                     Contact details are available because you have an accepted

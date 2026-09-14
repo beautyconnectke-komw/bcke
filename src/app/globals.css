@@ -141,3 +141,67 @@
     @apply min-h-11 min-w-0 w-full rounded-md border border-border bg-background px-3 font-normal outline-none transition placeholder:text-muted-foreground focus:border-foreground;
   }
 }
+
+@media print {
+  @page {
+    size: A4;
+    margin: 17mm 16mm 18mm;
+  }
+
+  html,
+  body {
+    background: white !important;
+  }
+
+  body {
+    print-color-adjust: exact;
+    -webkit-print-color-adjust: exact;
+  }
+
+  .legal-document {
+    color: #17221d;
+  }
+
+  .legal-site-header,
+  .legal-contents,
+  .legal-shell > div > .mt-6 {
+    display: none !important;
+  }
+
+  .legal-document-header {
+    break-after: avoid;
+  }
+
+  .legal-group {
+    break-before: page;
+  }
+
+  .legal-group:first-child {
+    break-before: auto;
+  }
+
+  .legal-group-heading,
+  .legal-section h3,
+  .legal-callout,
+  .legal-intro,
+  .legal-section-copy > dl,
+  .legal-section-copy > p {
+    break-inside: avoid;
+  }
+
+  .legal-section {
+    break-inside: avoid;
+  }
+
+  .legal-document-footer {
+    display: block;
+    break-before: avoid;
+  }
+
+  .legal-document-footer::after {
+    content: "Page " counter(page);
+    display: block;
+    margin-top: 0.4rem;
+    color: #708078;
+  }
+}

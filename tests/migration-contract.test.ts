@@ -48,6 +48,13 @@ const lifecycleSecurityMigration = readFileSync(
   ),
   "utf8",
 );
+const profileUpdatesMigration = readFileSync(
+  join(
+    process.cwd(),
+    "supabase/migrations/20260914100000_worker_profile_updates.sql",
+  ),
+  "utf8",
+);
 
 describe("Supabase migration contract", () => {
   it("models account role, worker verification, and availability separately", () => {
@@ -244,6 +251,24 @@ describe("Supabase migration contract", () => {
     );
     expect(lifecycleSecurityMigration).toContain(
       "revoke execute on function public.employer_can_view_worker_profile(uuid) from anon",
+    );
+  });
+
+  it("stores reviewed profile changes separately until an admin approves them", () => {
+    expect(profileUpdatesMigration).toContain(
+      "create table if not exists public.worker_profile_updates",
+    );
+    expect(profileUpdatesMigration).toContain(
+      "create unique index if not exists worker_profile_updates_one_pending",
+    );
+    expect(profileUpdatesMigration).toContain(
+      "set category_id = update_record.category_id",
+    );
+    expect(profileUpdatesMigration).toContain(
+      "create or replace function public.bc_approve_worker_profile_update",
+    );
+    expect(profileUpdatesMigration).toContain(
+      "create or replace function public.bc_reject_worker_profile_update",
     );
   });
 });

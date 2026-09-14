@@ -9,15 +9,17 @@ import {
 } from "@/components/admin/admin-actions";
 import { Button, EmptyState, StatusPill } from "@/components/shared/ui";
 import type {
+  AdminApplicationProfileUpdate,
   AdminApplicationReactivationRequest,
   AdminApplicationWorker,
 } from "@/lib/types/admin-applications";
 
-type ApplicationTab = "workers" | "reactivations";
+type ApplicationTab = "workers" | "reactivations" | "profile-updates";
 
 const applicationQueryKeys = {
   workers: ["admin", "applications", "workers"] as const,
   reactivations: ["admin", "applications", "reactivations"] as const,
+  profileUpdates: ["admin", "applications", "profile-updates"] as const,
 };
 
 async function fetchApplications<T>(tab: ApplicationTab): Promise<T> {
@@ -47,11 +49,16 @@ export function ApplicationTabs() {
     queryFn: () =>
       fetchApplications<AdminApplicationReactivationRequest[]>("reactivations"),
   });
+  const profileUpdatesQuery = useQuery({
+    queryKey: applicationQueryKeys.profileUpdates,
+    queryFn: () =>
+      fetchApplications<AdminApplicationProfileUpdate[]>("profile-updates"),
+  });
 
   return (
     <div className="mt-8 grid gap-5">
       <div
-        className="grid grid-cols-2 rounded-xl border border-border bg-muted/30 p-1"
+        className="grid grid-cols-3 rounded-xl border border-border bg-muted/30 p-1"
         role="tablist"
         aria-label="Application queues"
       >
@@ -69,6 +76,13 @@ export function ApplicationTabs() {
           label="Reactivation requests"
           onClick={() => setTab("reactivations")}
         />
+        <ApplicationTabButton
+          active={tab === "profile-updates"}
+          count={profileUpdatesQuery.data?.length}
+          id="profile-updates"
+          label="Profile updates"
+          onClick={() => setTab("profile-updates")}
+        />
       </div>
       <div
         id="admin-applications-panel"
@@ -78,8 +92,10 @@ export function ApplicationTabs() {
       >
         {tab === "workers" ? (
           <WorkerApplicationsPanel query={workersQuery} />
-        ) : (
+        ) : tab === "reactivations" ? (
           <ReactivationRequestsPanel query={reactivationsQuery} />
+        ) : (
+          <ProfileUpdatesPanel query={profileUpdatesQuery} />
         )}
       </div>
     </div>
@@ -228,6 +244,65 @@ function ReactivationRequestsPanel({
         <EmptyState
           title="No reactivation requests."
           description="Approved worker reactivation requests will appear here."
+        />
+      ) : null}
+    </div>
+  );
+}
+
+function ProfileUpdatesPanel({
+  query,
+}: {
+  query: ReturnType<typeof useQuery<AdminApplicationProfileUpdate[]>>;
+}) {
+  if (query.isPending) return <ApplicationPanelSkeleton />;
+  if (query.isError) {
+    return (
+      <ApplicationPanelError
+        message={query.error.message}
+        onRetry={query.refetch}
+      />
+    );
+  }
+
+  return (
+    <div className="grid gap-3" aria-live="polite">
+      {query.data.map((update) => (
+        <Link
+          key={update.id}
+          href={`/admin/applications/${update.worker_profile_id}`}
+          className="border border-border bg-background p-5 transition hover:border-foreground"
+        >
+          <div className="flex flex-wrap items-start justify-between gap-4">
+            <div>
+              <h2 className="text-lg font-semibold">
+                {update.worker?.full_name ?? "Worker profile unavailable"}
+              </h2>
+              <p className="mt-1 text-sm text-muted-foreground">
+                {update.worker?.location || "Location not shared"} · Submitted{" "}
+                {new Date(update.created_at).toLocaleDateString("en-KE")}
+              </p>
+            </div>
+            <StatusPill tone="warning">Pending update</StatusPill>
+          </div>
+          <div className="mt-4 flex flex-wrap gap-2 text-xs text-muted-foreground">
+            <span className="rounded-full bg-muted px-3 py-1.5">
+              Main speciality: {update.category_name || "Not provided"}
+            </span>
+            <span className="rounded-full bg-muted px-3 py-1.5">
+              {update.extra_specialty_names.length} extra specialit
+              {update.extra_specialty_names.length === 1 ? "y" : "ies"}
+            </span>
+          </div>
+          <p className="mt-4 text-sm font-medium text-foreground">
+            Open worker card to compare changes and approve or reject
+          </p>
+        </Link>
+      ))}
+      {query.data.length === 0 ? (
+        <EmptyState
+          title="No profile updates waiting."
+          description="Worker profile changes submitted for moderation will appear here."
         />
       ) : null}
     </div>

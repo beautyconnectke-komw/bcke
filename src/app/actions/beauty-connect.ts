@@ -28,6 +28,8 @@ import {
   requestWorkerReactivation,
   approveWorkerReactivation,
   declineWorkerReactivation,
+  approveWorkerProfileUpdate,
+  rejectWorkerProfileUpdate,
   requestAccountDeletion,
   updateCompanyContact,
   verifyAccountPassword,
@@ -191,6 +193,17 @@ export async function declineWorkerReactivationAction(
   reason?: string | null,
 ) {
   return declineWorkerReactivation(requestId, reason);
+}
+
+export async function approveWorkerProfileUpdateAction(updateId: string) {
+  return approveWorkerProfileUpdate(updateId);
+}
+
+export async function rejectWorkerProfileUpdateAction(
+  updateId: string,
+  reason?: string | null,
+) {
+  return rejectWorkerProfileUpdate(updateId, reason);
 }
 
 export async function markNotificationReadAction(notificationId: string) {

@@ -7,7 +7,7 @@ export default function AdminApplicationsPage() {
       <SectionHeading
         eyebrow="Moderation"
         title="Applications"
-        description="Review worker applications and reactivation requests."
+        description="Review worker applications, profile updates, and reactivation requests."
       />
       <ApplicationTabs />
     </div>

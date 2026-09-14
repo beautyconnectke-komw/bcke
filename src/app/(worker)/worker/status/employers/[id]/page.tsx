@@ -81,18 +81,22 @@ export default async function WorkerEmployerDetailPage({
                   .filter(Boolean)
                   .join(", ") || "Location not shared"}
               </p>
-              <div className="mt-4 grid gap-2 text-sm text-muted-foreground">
-                {employer.phone ? (
+              {employer.contact_unlocked ? (
+                <div className="mt-4 grid gap-2 text-sm text-muted-foreground">
                   <p className="flex items-center gap-2">
-                    <Phone className="size-4" /> {employer.phone}
+                    <UserRound className="size-4" />
+                    Operator: {employer.contact_person || "Not provided"}
                   </p>
-                ) : null}
-                {employer.business_email ? (
+                  <p className="flex items-center gap-2">
+                    <Phone className="size-4" />
+                    {employer.phone || "Phone not provided"}
+                  </p>
                   <p className="flex items-center gap-2 break-all">
-                    <Mail className="size-4" /> {employer.business_email}
+                    <Mail className="size-4" />
+                    {employer.business_email || "Email not provided"}
                   </p>
-                ) : null}
-              </div>
+                </div>
+              ) : null}
             </div>
           </div>
 

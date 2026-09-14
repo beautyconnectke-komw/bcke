@@ -1,5 +1,5 @@
-import { SupportPage } from "@/components/shared/support-page";
+import { redirect } from "next/navigation";
 
 export default function EmployerPrivacyPage() {
-  return <SupportPage role="employer" kind="privacy" />;
+  redirect("/privacy#privacy-employers");
 }

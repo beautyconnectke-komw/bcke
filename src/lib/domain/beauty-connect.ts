@@ -56,6 +56,8 @@ const employerRequestSelect =
   "id, employer_profile_id, worker_profile_id, status, message, responded_at, expires_at, created_at, updated_at";
 const reactivationRequestSelect =
   "id, worker_profile_id, reason, status, reviewed_at, created_at, updated_at";
+const workerProfileUpdateSelect =
+  "id, worker_profile_id, category_id, profile_photo_path, extra_specialty_ids, portfolio_paths, status, reviewed_at, reviewed_by, created_at, updated_at";
 const handshakeSelect =
   "id, employer_profile_id, worker_profile_id, request_id, status, matched_at, completed_at, cancelled_at, created_at, updated_at";
 const notificationSelect =
@@ -112,6 +114,7 @@ export type PublicEmployerProfile =
     contact_person: string | null;
     phone: string | null;
     business_email: string | null;
+    contact_unlocked: boolean;
   };
 export type Notification = Tables<"notifications">;
 export type WorkerProfile = Tables<"worker_profiles">;
@@ -131,6 +134,17 @@ export type WorkerPublicProfile =
 export type AdminWorkerDetail = {
   worker: AdminWorker;
   portfolio: Tables<"worker_portfolio">[];
+  profileUpdate: AdminWorkerProfileUpdate | null;
+};
+export type AdminWorkerProfileUpdate = Tables<"worker_profile_updates"> & {
+  category_name: string | null;
+  extra_specialty_names: string[];
+};
+export type AdminProfileUpdateRequest = AdminWorkerProfileUpdate & {
+  worker: Pick<
+    AdminWorker,
+    "id" | "full_name" | "location" | "verification_status"
+  > | null;
 };
 export type EmployerProfile = Tables<"employer_profiles">;
 export type EmployerRequest = Tables<"employer_requests">;
@@ -1307,6 +1321,62 @@ export async function getAdminWorkers(): Promise<AdminWorker[]> {
   }));
 }
 
+export async function getAdminProfileUpdates(): Promise<
+  AdminProfileUpdateRequest[]
+> {
+  const { supabase } = await getAuthContext();
+  const { data: updates, error } = await supabase
+    .from("worker_profile_updates")
+    .select(workerProfileUpdateSelect)
+    .eq("status", "pending")
+    .order("created_at", { ascending: false })
+    .limit(100);
+  normalizeError(error);
+  if (!updates?.length) return [];
+
+  const workerIds = [
+    ...new Set(updates.map((update) => update.worker_profile_id)),
+  ];
+  const [
+    { data: workers, error: workerError },
+    { data: categories, error: categoriesError },
+  ] = await Promise.all([
+    supabase
+      .from("worker_profiles")
+      .select(workerProfileRowSelect)
+      .in("id", workerIds),
+    supabase.from("categories").select("id, name"),
+  ]);
+  normalizeError(workerError);
+  normalizeError(categoriesError);
+
+  const categoryNames = new Map(
+    (categories ?? []).map((category) => [category.id, category.name]),
+  );
+  const workerMap = new Map(
+    (workers ?? []).map((worker) => [worker.id, worker]),
+  );
+
+  return updates.map((update) => ({
+    ...update,
+    category_name: categoryNames.get(update.category_id) ?? null,
+    extra_specialty_names: update.extra_specialty_ids
+      .map((specialtyId) => categoryNames.get(specialtyId))
+      .filter((name): name is string => Boolean(name)),
+    worker: workerMap.has(update.worker_profile_id)
+      ? (() => {
+          const worker = workerMap.get(update.worker_profile_id)!;
+          return {
+            id: worker.id,
+            full_name: worker.full_name,
+            location: worker.location,
+            verification_status: worker.verification_status,
+          };
+        })()
+      : null,
+  }));
+}
+
 export async function getAdminReactivationRequests(): Promise<
   AdminReactivationRequest[]
 > {
@@ -1390,6 +1460,7 @@ export async function getAdminWorkerDetails(
   const [
     { data: workerRow, error: workerError },
     { data: categories, error: categoriesError },
+    { data: profileUpdate, error: profileUpdateError },
   ] = await Promise.all([
     supabase
       .from("worker_profiles")
@@ -1397,9 +1468,16 @@ export async function getAdminWorkerDetails(
       .eq("id", workerProfileId)
       .maybeSingle(),
     supabase.from("categories").select("id, name"),
+    supabase
+      .from("worker_profile_updates")
+      .select(workerProfileUpdateSelect)
+      .eq("worker_profile_id", workerProfileId)
+      .eq("status", "pending")
+      .maybeSingle(),
   ]);
   normalizeError(workerError);
   normalizeError(categoriesError);
+  normalizeError(profileUpdateError);
   if (!workerRow) return null;
 
   const categoryNames = new Map(
@@ -1421,7 +1499,44 @@ export async function getAdminWorkerDetails(
     .eq("worker_profile_id", worker.id)
     .order("display_order");
   normalizeError(error);
-  return { worker, portfolio: portfolio ?? [] };
+  return {
+    worker,
+    portfolio: portfolio ?? [],
+    profileUpdate: profileUpdate
+      ? {
+          ...profileUpdate,
+          category_name: categoryNames.get(profileUpdate.category_id) ?? null,
+          extra_specialty_names: profileUpdate.extra_specialty_ids
+            .map((specialtyId) => categoryNames.get(specialtyId))
+            .filter((name): name is string => Boolean(name)),
+        }
+      : null,
+  };
+}
+
+export async function approveWorkerProfileUpdate(updateId: string) {
+  const parsedUpdateId = uuidSchema.parse(updateId);
+  const supabase = await createClient();
+  const { error } = await supabase.rpc("bc_approve_worker_profile_update", {
+    p_update_id: parsedUpdateId,
+  });
+  normalizeError(error);
+}
+
+export async function rejectWorkerProfileUpdate(
+  updateId: string,
+  reason?: string | null,
+) {
+  const parsedUpdateId = uuidSchema.parse(updateId);
+  const parsedReason = workerReactivationRequestSchema
+    .pick({ reason: true })
+    .parse({ reason }).reason;
+  const supabase = await createClient();
+  const { error } = await supabase.rpc("bc_reject_worker_profile_update", {
+    p_update_id: parsedUpdateId,
+    p_reason: parsedReason ?? null,
+  });
+  normalizeError(error);
 }
 
 export async function getAdminEmailWhitelist() {
@@ -1708,6 +1823,7 @@ export async function getEmployerProfile(
   let contactPerson: string | null = null;
   let phone: string | null = null;
   let businessEmail: string | null = null;
+  let contactUnlocked = false;
   const auth = await getOptionalAuthContext();
   if (auth) {
     const { data: worker, error: workerError } = await auth.supabase
@@ -1728,6 +1844,7 @@ export async function getEmployerProfile(
       normalizeError(handshakeError);
 
       if (handshake) {
+        contactUnlocked = true;
         const { data: contact, error: contactError } = await auth.supabase
           .from("employer_profiles")
           .select("contact_person, phone, business_email")
@@ -1746,6 +1863,7 @@ export async function getEmployerProfile(
     contact_person: contactPerson,
     phone,
     business_email: businessEmail,
+    contact_unlocked: contactUnlocked,
   };
 }
 

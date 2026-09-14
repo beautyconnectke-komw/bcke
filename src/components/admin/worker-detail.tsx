@@ -4,7 +4,10 @@ import type { AdminWorkerDetail } from "@/lib/domain/beauty-connect";
 import { env } from "@/config/env";
 import { publicImageUrl } from "@/lib/utils";
 import { StatusPill } from "@/components/shared/ui";
-import { WorkerReviewActions } from "@/components/admin/admin-actions";
+import {
+  ProfileUpdateReviewActions,
+  WorkerReviewActions,
+} from "@/components/admin/admin-actions";
 
 export function AdminWorkerDetailView({
   detail,
@@ -123,14 +126,207 @@ export function AdminWorkerDetailView({
         )}
       </section>
 
-      <section className="border-t border-border pt-5">
-        <WorkerReviewActions
-          workerId={worker.id}
-          status={
-            worker.is_suspended ? "suspended" : worker.verification_status
-          }
+      {detail.profileUpdate ? <ProfileUpdateSection detail={detail} /> : null}
+
+      {!detail.profileUpdate ? (
+        <section className="border-t border-border pt-5">
+          <WorkerReviewActions
+            workerId={worker.id}
+            status={
+              worker.is_suspended ? "suspended" : worker.verification_status
+            }
+          />
+        </section>
+      ) : null}
+    </div>
+  );
+}
+
+function ProfileUpdateSection({ detail }: { detail: AdminWorkerDetail }) {
+  const { worker, portfolio, profileUpdate } = detail;
+  if (!profileUpdate) return null;
+
+  const currentPhoto = publicImageUrl(
+    env.supabase.url,
+    "worker-profile-images",
+    worker.profile_photo_path,
+  );
+  const requestedPhoto = publicImageUrl(
+    env.supabase.url,
+    "worker-profile-images",
+    profileUpdate.profile_photo_path,
+  );
+  const currentExtras = worker.extra_specialty_names.join(", ") || "None";
+  const requestedExtras =
+    profileUpdate.extra_specialty_names.join(", ") || "None";
+  const portfolioChanged = profileUpdate.portfolio_paths !== null;
+
+  return (
+    <section className="border border-amber-200 bg-amber-50/40 p-6">
+      <div className="flex flex-wrap items-start justify-between gap-4">
+        <div>
+          <p className="text-xs font-semibold uppercase tracking-[0.16em] text-amber-800">
+            Profile updates
+          </p>
+          <h2 className="mt-2 text-xl font-semibold">
+            Review the worker&apos;s requested changes
+          </h2>
+          <p className="mt-2 text-sm leading-6 text-muted-foreground">
+            The approved profile remains live until you approve this update.
+          </p>
+        </div>
+        <StatusPill tone="warning">Pending update</StatusPill>
+      </div>
+
+      <div className="mt-6 grid gap-5 sm:grid-cols-2">
+        <ChangeDetail
+          label="Main speciality"
+          current={worker.category_name || "Not provided"}
+          requested={profileUpdate.category_name || "Not provided"}
         />
-      </section>
+        <ChangeDetail
+          label="Extra specialities"
+          current={currentExtras}
+          requested={requestedExtras}
+        />
+      </div>
+
+      <div className="mt-6 grid gap-4 border-t border-amber-200 pt-6 sm:grid-cols-2">
+        <ImageChange
+          label="Profile image currently live"
+          src={currentPhoto}
+          emptyLabel="No current image"
+        />
+        <ImageChange
+          label="Profile image requested"
+          src={requestedPhoto}
+          emptyLabel="No requested image"
+        />
+      </div>
+
+      <div className="mt-6 border-t border-amber-200 pt-6">
+        <h3 className="text-sm font-semibold">Portfolio</h3>
+        {portfolioChanged ? (
+          <div className="mt-3 grid gap-4 sm:grid-cols-2">
+            <PortfolioPreview
+              label="Current portfolio"
+              paths={portfolio.map((item) => item.storage_path)}
+            />
+            <PortfolioPreview
+              label="Requested portfolio"
+              paths={profileUpdate.portfolio_paths ?? []}
+            />
+          </div>
+        ) : (
+          <p className="mt-2 text-sm text-muted-foreground">
+            No portfolio changes were requested.
+          </p>
+        )}
+      </div>
+
+      <div className="mt-6 border-t border-amber-200 pt-5">
+        <ProfileUpdateReviewActions updateId={profileUpdate.id} />
+      </div>
+    </section>
+  );
+}
+
+function ChangeDetail({
+  label,
+  current,
+  requested,
+}: {
+  label: string;
+  current: string;
+  requested: string;
+}) {
+  const changed = current !== requested;
+  return (
+    <div className="grid gap-2">
+      <p className="text-xs font-semibold uppercase tracking-[0.12em] text-muted-foreground">
+        {label}
+      </p>
+      <div className="grid gap-1 text-sm">
+        <p>
+          <span className="font-medium text-muted-foreground">Current:</span>{" "}
+          {current}
+        </p>
+        <p className={changed ? "font-semibold text-amber-900" : ""}>
+          <span className="font-medium text-muted-foreground">Requested:</span>{" "}
+          {requested}
+          {!changed ? " (unchanged)" : ""}
+        </p>
+      </div>
+    </div>
+  );
+}
+
+function ImageChange({
+  label,
+  src,
+  emptyLabel,
+}: {
+  label: string;
+  src: string | null;
+  emptyLabel: string;
+}) {
+  return (
+    <div>
+      <p className="text-xs font-semibold uppercase tracking-[0.12em] text-muted-foreground">
+        {label}
+      </p>
+      <div className="relative mt-3 aspect-square max-w-48 overflow-hidden bg-muted">
+        {src ? (
+          <Image src={src} alt="" fill sizes="192px" className="object-cover" />
+        ) : (
+          <div className="grid h-full place-items-center p-4 text-center text-xs text-muted-foreground">
+            {emptyLabel}
+          </div>
+        )}
+      </div>
+    </div>
+  );
+}
+
+function PortfolioPreview({
+  label,
+  paths,
+}: {
+  label: string;
+  paths: string[];
+}) {
+  return (
+    <div>
+      <p className="text-xs font-semibold uppercase tracking-[0.12em] text-muted-foreground">
+        {label}
+      </p>
+      {paths.length ? (
+        <div className="mt-3 grid grid-cols-2 gap-3">
+          {paths.map((path) => {
+            const image = publicImageUrl(
+              env.supabase.url,
+              "worker-portfolio-images",
+              path,
+            );
+            return image ? (
+              <div
+                key={path}
+                className="relative aspect-square overflow-hidden"
+              >
+                <Image
+                  src={image}
+                  alt="Portfolio example"
+                  fill
+                  sizes="160px"
+                  className="object-cover"
+                />
+              </div>
+            ) : null;
+          })}
+        </div>
+      ) : (
+        <p className="mt-2 text-sm text-muted-foreground">No images.</p>
+      )}
     </div>
   );
 }

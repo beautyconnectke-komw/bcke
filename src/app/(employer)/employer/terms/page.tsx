@@ -1,5 +1,5 @@
-import { SupportPage } from "@/components/shared/support-page";
+import { redirect } from "next/navigation";
 
 export default function EmployerTermsPage() {
-  return <SupportPage role="employer" kind="terms" />;
+  redirect("/terms#terms-employers");
 }

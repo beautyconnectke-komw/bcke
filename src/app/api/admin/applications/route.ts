@@ -1,5 +1,6 @@
 import { NextResponse } from "next/server";
 import {
+  getAdminProfileUpdates,
   getAdminReactivationRequests,
   getAdminWorkers,
 } from "@/lib/domain/beauty-connect";
@@ -55,6 +56,32 @@ export async function GET(request: Request) {
             worker: worker
               ? { id: worker.id, full_name: worker.full_name }
               : null,
+          }),
+        ),
+        { headers: { "Cache-Control": "private, no-store" } },
+      );
+    }
+
+    if (tab === "profile-updates") {
+      const updates = await getAdminProfileUpdates();
+      return NextResponse.json(
+        updates.map(
+          ({
+            id,
+            worker_profile_id,
+            category_id,
+            category_name,
+            extra_specialty_names,
+            created_at,
+            worker,
+          }) => ({
+            id,
+            worker_profile_id,
+            category_id,
+            category_name,
+            extra_specialty_names,
+            created_at,
+            worker,
           }),
         ),
         { headers: { "Cache-Control": "private, no-store" } },

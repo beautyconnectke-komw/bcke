@@ -3,7 +3,9 @@
 import { useState } from "react";
 import {
   approveWorkerAction,
+  approveWorkerProfileUpdateAction,
   approveWorkerReactivationAction,
+  rejectWorkerProfileUpdateAction,
   declineWorkerReactivationAction,
   rejectWorkerAction,
   restoreWorkerAction,
@@ -147,6 +149,48 @@ export function ReactivationReviewActions({
         onClick={() => review("decline")}
       >
         Decline
+      </Button>
+      {error ? (
+        <p className="basis-full text-sm text-red-700">{error}</p>
+      ) : null}
+    </div>
+  );
+}
+
+export function ProfileUpdateReviewActions({ updateId }: { updateId: string }) {
+  const [busy, setBusy] = useState(false);
+  const [error, setError] = useState<string | null>(null);
+
+  async function review(action: "approve" | "reject") {
+    setBusy(true);
+    setError(null);
+    try {
+      if (action === "approve") {
+        await approveWorkerProfileUpdateAction(updateId);
+      } else {
+        await rejectWorkerProfileUpdateAction(
+          updateId,
+          "Please review the requested profile details and submit valid information.",
+        );
+      }
+      window.location.reload();
+    } catch (caught) {
+      setError(caught instanceof Error ? caught.message : "Action failed.");
+      setBusy(false);
+    }
+  }
+
+  return (
+    <div className="flex flex-wrap gap-2">
+      <Button disabled={busy} onClick={() => review("approve")}>
+        Approve update
+      </Button>
+      <Button
+        disabled={busy}
+        variant="secondary"
+        onClick={() => review("reject")}
+      >
+        Reject update
       </Button>
       {error ? (
         <p className="basis-full text-sm text-red-700">{error}</p>

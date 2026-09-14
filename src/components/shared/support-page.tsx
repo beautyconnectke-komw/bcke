@@ -1,29 +1,8 @@
 import Link from "next/link";
-import {
-  ArrowLeft,
-  CircleHelp,
-  FileText,
-  Mail,
-  ShieldCheck,
-} from "lucide-react";
+import { ArrowLeft, CircleHelp, Mail } from "lucide-react";
 
-type SupportPageKind = "terms" | "privacy" | "help";
-
-export function SupportPage({
-  role,
-  kind,
-}: {
-  role: "worker" | "employer";
-  kind: SupportPageKind;
-}) {
-  const isHelp = kind === "help";
-  const title = isHelp
-    ? "Help centre"
-    : kind === "terms"
-      ? "Terms & conditions"
-      : "Privacy notice";
+export function SupportPage({ role }: { role: "worker" | "employer" }) {
   const backHref = role === "worker" ? "/worker/profile" : "/employer/profile";
-  const Icon = isHelp ? CircleHelp : kind === "terms" ? FileText : ShieldCheck;
 
   return (
     <div className="mx-auto max-w-3xl pb-10">
@@ -35,42 +14,16 @@ export function SupportPage({
       </Link>
       <section className="rounded-3xl border border-[#dfe5dc] bg-white p-6 shadow-[0_18px_50px_rgba(26,54,32,0.06)] sm:p-10">
         <div className="grid size-12 place-items-center rounded-2xl bg-[#e8def8] text-[#035715]">
-          <Icon className="size-6" />
+          <CircleHelp className="size-6" />
         </div>
         <p className="mt-6 text-xs font-bold uppercase tracking-[0.16em] text-[#625b71]">
           Beauty Connect · {role}
         </p>
         <h1 className="mt-2 text-3xl font-bold tracking-tight text-[#1b1b1d]">
-          {title}
+          Help centre
         </h1>
-        {isHelp ? <HelpContent /> : <PlaceholderContent kind={kind} />}
+        <HelpContent />
       </section>
-    </div>
-  );
-}
-
-function PlaceholderContent({ kind }: { kind: "terms" | "privacy" }) {
-  return (
-    <div className="mt-8 space-y-6 text-sm leading-7 text-[#40493e]">
-      <p className="rounded-2xl bg-[#f6f3f5] p-4 font-medium text-[#1b1b1d]">
-        This is a placeholder for the final{" "}
-        {kind === "terms" ? "Terms & Conditions" : "Privacy Notice"}. The
-        production policy content will be published here before launch.
-      </p>
-      <div>
-        <h2 className="text-base font-bold text-[#1b1b1d]">
-          What this page will cover
-        </h2>
-        <ul className="mt-3 list-disc space-y-2 pl-5">
-          <li>How Beauty Connect accounts and profiles are used.</li>
-          <li>What information is collected and why it is needed.</li>
-          <li>Your choices, responsibilities, and support options.</li>
-        </ul>
-      </div>
-      <p className="text-[#707a6d]">
-        Last updated: placeholder · Please contact the Beauty Connect team if
-        you have questions about this draft.
-      </p>
     </div>
   );
 }

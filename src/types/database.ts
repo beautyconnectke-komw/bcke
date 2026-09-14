@@ -424,6 +424,48 @@ export type Database = {
         };
         Relationships: [];
       };
+      worker_profile_updates: {
+        Row: {
+          id: string;
+          worker_profile_id: string;
+          category_id: string;
+          profile_photo_path: string | null;
+          extra_specialty_ids: string[];
+          portfolio_paths: string[] | null;
+          status: Database["public"]["Enums"]["worker_profile_update_status"];
+          reviewed_at: string | null;
+          reviewed_by: string | null;
+          created_at: string;
+          updated_at: string;
+        };
+        Insert: {
+          id?: string;
+          worker_profile_id: string;
+          category_id: string;
+          profile_photo_path?: string | null;
+          extra_specialty_ids?: string[];
+          portfolio_paths?: string[] | null;
+          status?: Database["public"]["Enums"]["worker_profile_update_status"];
+          reviewed_at?: string | null;
+          reviewed_by?: string | null;
+          created_at?: string;
+          updated_at?: string;
+        };
+        Update: {
+          id?: string;
+          worker_profile_id?: string;
+          category_id?: string;
+          profile_photo_path?: string | null;
+          extra_specialty_ids?: string[];
+          portfolio_paths?: string[] | null;
+          status?: Database["public"]["Enums"]["worker_profile_update_status"];
+          reviewed_at?: string | null;
+          reviewed_by?: string | null;
+          created_at?: string;
+          updated_at?: string;
+        };
+        Relationships: [];
+      };
       employer_requests: {
         Row: {
           id: string;
@@ -710,6 +752,14 @@ export type Database = {
         };
         Returns: string;
       };
+      bc_approve_worker_profile_update: {
+        Args: { p_update_id: string };
+        Returns: undefined;
+      };
+      bc_reject_worker_profile_update: {
+        Args: { p_update_id: string; p_reason?: string | null };
+        Returns: undefined;
+      };
       bc_record_worker_profile_view: {
         Args: { p_worker_profile_id: string };
         Returns: boolean;
@@ -834,6 +884,7 @@ export type Database = {
         | "expired";
       handshake_status: "matched" | "completed" | "cancelled";
       reactivation_request_status: "pending" | "approved" | "declined";
+      worker_profile_update_status: "pending" | "approved" | "rejected";
       notification_type:
         | "application_submitted"
         | "application_approved"
