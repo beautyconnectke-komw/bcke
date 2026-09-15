@@ -27,7 +27,7 @@ export default function AuthLayout({ children }: LayoutProps<"/">) {
           <span>© Beauty Connect</span>
           <nav className="flex items-center gap-3" aria-label="Account footer">
             <a
-              href="mailto:support@beautyconnect.example"
+              href="mailto:beautyconnect254@gmail.com"
               className="inline-flex items-center gap-1 transition hover:text-[#035715]"
             >
               <CircleHelp aria-hidden="true" className="size-3" />

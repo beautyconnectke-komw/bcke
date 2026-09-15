@@ -63,7 +63,7 @@ export function AdminCompanyContactForm({
           value={email}
           onChange={(event) => setEmail(event.target.value)}
           className="field"
-          placeholder="support@beautyconnect.co.ke"
+          placeholder="beautyconnect254@gmail.com"
         />
       </label>
       <div className="flex flex-wrap items-center gap-3 sm:col-span-2">

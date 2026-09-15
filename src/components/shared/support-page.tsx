@@ -54,7 +54,7 @@ function HelpContent() {
         />
       </div>
       <a
-        href="mailto:support@beautyconnect.example"
+        href="mailto:beautyconnect254@gmail.com"
         className="inline-flex items-center gap-2 font-semibold text-[#035715] hover:underline"
       >
         <Mail className="size-4" /> Contact support

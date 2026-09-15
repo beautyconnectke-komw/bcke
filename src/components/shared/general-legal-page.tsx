@@ -57,7 +57,7 @@ export function GeneralLegalPage({ kind }: { kind: LegalKind }) {
           </div>
         </header>
 
-        <article className="legal-document mt-8 overflow-hidden rounded-[28px] border border-[#dbe4dc] bg-white shadow-[0_24px_80px_rgba(34,64,45,0.08)] sm:mt-12 print:mt-0 print:overflow-visible print:rounded-none print:border-0 print:shadow-none">
+        <article className="legal-document mt-8 sm:mt-12 print:mt-0">
           <div className="legal-document-header px-6 pb-9 pt-7 sm:px-12 sm:pb-12 sm:pt-11 print:px-0 print:pb-8 print:pt-0">
             <div className="flex items-center justify-between gap-4">
               <div className="flex items-center gap-2 text-[11px] font-bold uppercase tracking-[0.18em] text-[#6c5a97]">
@@ -88,10 +88,7 @@ export function GeneralLegalPage({ kind }: { kind: LegalKind }) {
 
               <div className="legal-meta-card rounded-2xl border border-[#dfe8df] bg-[#f7faf7] p-5 text-sm">
                 <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-1">
-                  <MetaItem
-                    label="Effective date"
-                    value="[INSERT EFFECTIVE DATE]"
-                  />
+                  <MetaItem label="Effective date" value={LAST_UPDATED} />
                   <MetaItem label="Last updated" value={LAST_UPDATED} />
                   <MetaItem
                     label="Applies to"
@@ -124,8 +121,8 @@ export function GeneralLegalPage({ kind }: { kind: LegalKind }) {
                 ))}
               </nav>
               <div className="mt-8 rounded-2xl bg-[#f2effa] p-4 text-xs leading-5 text-[#625b71]">
-                This is one canonical document. Role-specific rules appear in
-                the relevant section below.
+                One canonical document. Role-specific rules appear in the
+                relevant section below.
               </div>
             </aside>
 
@@ -321,8 +318,8 @@ function TermsContent() {
           <HandshakeCallout />
           <p>
             Before a handshake, the Platform is designed to show discovery
-            information appropriate to the User&apos;s role, such as a Worker’s name,
-            location, experience, skills and portfolio, or an Employer’s
+            information appropriate to the User&apos;s role, such as a Worker’s
+            name, location, experience, skills and portfolio, or an Employer’s
             business name, location, services and salon images. Private phone
             numbers and email addresses are not ordinarily disclosed to the
             other party before the relevant handshake.
@@ -1209,21 +1206,21 @@ function ContactDetails({ privacy = false }: { privacy?: boolean }) {
     <div className="grid gap-3 rounded-xl border border-[#e5ebe5] bg-[#fbfcfa] p-4 text-[13px] leading-6 sm:grid-cols-2">
       <div>
         <p className="font-semibold text-[#284638]">Legal entity / operator</p>
-        <p>[INSERT LEGAL ENTITY NAME]</p>
+        <p>Beauty Connect</p>
       </div>
       <div>
         <p className="font-semibold text-[#284638]">
           {privacy ? "Privacy contact" : "General / legal contact"}
         </p>
-        <p>
-          {privacy
-            ? "[INSERT PRIVACY EMAIL]"
-            : "[INSERT GENERAL / LEGAL EMAIL]"}
-        </p>
+        <p>beautyconnect254@gmail.com</p>
       </div>
-      <div className="sm:col-span-2">
-        <p className="font-semibold text-[#284638]">Business address</p>
-        <p>[INSERT BUSINESS ADDRESS], Kenya</p>
+      <div>
+        <p className="font-semibold text-[#284638]">Telephone</p>
+        <p>+254721140200</p>
+      </div>
+      <div>
+        <p className="font-semibold text-[#284638]">Operating country</p>
+        <p>Kenya</p>
       </div>
     </div>
   );
@@ -1234,9 +1231,7 @@ function ContactSection({ kind }: { kind: LegalKind }) {
     <LegalSection number={kind === "terms" ? "16" : "24"} title="Contact">
       <p>
         For questions about these {kind === "terms" ? "Terms" : "documents"},
-        contact Beauty Connect using the confirmed details below. Do not use
-        placeholder details for a live legal notice until they have been
-        confirmed by the Beauty Connect operator.
+        contact Beauty Connect using the details below.
       </p>
       <ContactDetails privacy={kind === "privacy"} />
     </LegalSection>

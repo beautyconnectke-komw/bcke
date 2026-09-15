@@ -142,6 +142,12 @@
   }
 }
 
+.legal-group + .legal-group {
+  margin-top: 5rem;
+  border-top: 1px solid #dbe4dc;
+  padding-top: 4rem;
+}
+
 @media print {
   @page {
     size: A4;
@@ -178,6 +184,12 @@
 
   .legal-group:first-child {
     break-before: auto;
+  }
+
+  .legal-group + .legal-group {
+    margin-top: 0;
+    border-top: 0;
+    padding-top: 0;
   }
 
   .legal-group-heading,

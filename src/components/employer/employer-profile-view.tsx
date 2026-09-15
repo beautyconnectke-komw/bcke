@@ -12,25 +12,20 @@ import {
   Pencil,
   ShieldCheck,
   Sparkles,
+  Settings2,
 } from "lucide-react";
-import type {
-  CompanyContact,
-  EmployerProfile,
-} from "@/lib/domain/beauty-connect";
+import type { EmployerProfile } from "@/lib/domain/beauty-connect";
 import type { Tables } from "@/types/database";
 import { env } from "@/config/env";
 import { publicImageUrl } from "@/lib/utils";
 import { LinkButton } from "@/components/shared/ui";
-import { DeleteAccountForm } from "@/components/shared/delete-account-form";
 
 export function EmployerProfileView({
   profile,
   galleryPromise,
-  companyContact,
 }: {
   profile: EmployerProfile;
   galleryPromise: Promise<Tables<"employer_gallery">[]>;
-  companyContact: CompanyContact;
 }) {
   const image = publicImageUrl(
     env.supabase.url,
@@ -153,6 +148,11 @@ export function EmployerProfileView({
           >
             <div className="grid gap-1">
               <AccountLink
+                href="/employer/profile/settings"
+                icon={<Settings2 className="size-4" />}
+                label="Account settings"
+              />
+              <AccountLink
                 href="/employer/profile/password"
                 icon={<KeyRound className="size-4" />}
                 label="Change password"
@@ -173,11 +173,6 @@ export function EmployerProfileView({
                 label="Help centre"
               />
             </div>
-            <DeleteAccountForm
-              role="employer"
-              supportPhone={companyContact.phone}
-              supportEmail={companyContact.email}
-            />
           </ProfileCard>
         </aside>
       </div>

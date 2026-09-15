@@ -12,10 +12,10 @@ import {
   Pencil,
   ShieldCheck,
   Sparkles,
+  Settings2,
 } from "lucide-react";
 import type {
   Category,
-  CompanyContact,
   ReactivationRequest,
   WorkerProfile,
 } from "@/lib/domain/beauty-connect";
@@ -24,20 +24,17 @@ import { env } from "@/config/env";
 import { calculateExperience, publicImageUrl } from "@/lib/utils";
 import { LinkButton, StatusPill } from "@/components/shared/ui";
 import { WorkerReactivationForm } from "@/components/worker/worker-reactivation-form";
-import { DeleteAccountForm } from "@/components/shared/delete-account-form";
 
 export function WorkerProfileView({
   profile,
   categories,
   portfolioPromise,
   reactivationRequest,
-  companyContact,
 }: {
   profile: WorkerProfile;
   categories: Category[];
   portfolioPromise: Promise<Tables<"worker_portfolio">[]>;
   reactivationRequest: ReactivationRequest | null;
-  companyContact: CompanyContact;
 }) {
   const photo = publicImageUrl(
     env.supabase.url,
@@ -205,6 +202,11 @@ export function WorkerProfileView({
           >
             <div className="grid gap-1">
               <AccountLink
+                href="/worker/profile/settings"
+                icon={<Settings2 className="size-4" />}
+                label="Account settings"
+              />
+              <AccountLink
                 href="/worker/profile/password"
                 icon={<KeyRound className="size-4" />}
                 label="Change password"
@@ -225,11 +227,6 @@ export function WorkerProfileView({
                 label="Help centre"
               />
             </div>
-            <DeleteAccountForm
-              role="worker"
-              supportPhone={companyContact.phone}
-              supportEmail={companyContact.email}
-            />
           </ProfileCard>
         </aside>
       </div>
