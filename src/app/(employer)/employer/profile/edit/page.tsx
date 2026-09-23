@@ -4,13 +4,15 @@ import { LinkButton, SetupState } from "@/components/shared/ui";
 import {
   getCurrentEmployerGallery,
   getCurrentEmployerProfile,
+  getCategories,
 } from "@/lib/domain/beauty-connect";
 
 export default async function EmployerEditProfilePage() {
   try {
-    const [profile, gallery] = await Promise.all([
+    const [profile, gallery, categories] = await Promise.all([
       getCurrentEmployerProfile(),
       getCurrentEmployerGallery(),
+      getCategories(),
     ]);
     if (!profile) return <SetupState />;
     return (
@@ -34,7 +36,12 @@ export default async function EmployerEditProfilePage() {
             public salon profile when saved.
           </p>
         </div>
-        <EmployerForm profile={profile} gallery={gallery} mode="edit" />
+        <EmployerForm
+          profile={profile}
+          categories={categories}
+          gallery={gallery}
+          mode="edit"
+        />
       </div>
     );
   } catch {

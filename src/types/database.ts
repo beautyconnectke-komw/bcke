@@ -278,11 +278,15 @@ export type Database = {
           business_email: string | null;
           description: string | null;
           location: string | null;
+          county: string | null;
+          town: string | null;
           address_line: string | null;
           latitude: number | null;
           longitude: number | null;
           profile_image_path: string | null;
           salon_info: Json;
+          category_id: string | null;
+          extra_specialty_ids: string[];
           is_suspended: boolean;
           created_at: string;
           updated_at: string;
@@ -296,11 +300,15 @@ export type Database = {
           business_email?: string | null;
           description?: string | null;
           location?: string | null;
+          county?: string | null;
+          town?: string | null;
           address_line?: string | null;
           latitude?: number | null;
           longitude?: number | null;
           profile_image_path?: string | null;
           salon_info?: Json;
+          category_id?: string | null;
+          extra_specialty_ids?: string[];
           is_suspended?: boolean;
           created_at?: string;
           updated_at?: string;
@@ -314,14 +322,66 @@ export type Database = {
           business_email?: string | null;
           description?: string | null;
           location?: string | null;
+          county?: string | null;
+          town?: string | null;
           address_line?: string | null;
           latitude?: number | null;
           longitude?: number | null;
           profile_image_path?: string | null;
           salon_info?: Json;
+          category_id?: string | null;
+          extra_specialty_ids?: string[];
           is_suspended?: boolean;
           created_at?: string;
           updated_at?: string;
+        };
+        Relationships: [];
+      };
+      employer_specialty_migration_issues: {
+        Row: {
+          employer_profile_id: string;
+          source_field: string;
+          source_value: string;
+          unmatched_values: string[];
+          created_at: string;
+        };
+        Insert: {
+          employer_profile_id: string;
+          source_field?: string;
+          source_value: string;
+          unmatched_values: string[];
+          created_at?: string;
+        };
+        Update: {
+          employer_profile_id?: string;
+          source_field?: string;
+          source_value?: string;
+          unmatched_values?: string[];
+          created_at?: string;
+        };
+        Relationships: [];
+      };
+      employer_location_migration_issues: {
+        Row: {
+          employer_profile_id: string;
+          source_location: string | null;
+          source_address_line: string | null;
+          reason: string;
+          created_at: string;
+        };
+        Insert: {
+          employer_profile_id: string;
+          source_location?: string | null;
+          source_address_line?: string | null;
+          reason: string;
+          created_at?: string;
+        };
+        Update: {
+          employer_profile_id?: string;
+          source_location?: string | null;
+          source_address_line?: string | null;
+          reason?: string;
+          created_at?: string;
         };
         Relationships: [];
       };
@@ -549,6 +609,7 @@ export type Database = {
           title: string;
           body: string | null;
           data: Json;
+          dedupe_key: string | null;
           read_at: string | null;
           created_at: string;
         };
@@ -559,6 +620,7 @@ export type Database = {
           title: string;
           body?: string | null;
           data?: Json;
+          dedupe_key?: string | null;
           read_at?: string | null;
           created_at?: string;
         };
@@ -569,7 +631,83 @@ export type Database = {
           title?: string;
           body?: string | null;
           data?: Json;
+          dedupe_key?: string | null;
           read_at?: string | null;
+          created_at?: string;
+        };
+        Relationships: [];
+      };
+      notification_push_subscriptions: {
+        Row: {
+          id: string;
+          profile_id: string;
+          endpoint: string;
+          p256dh: string;
+          auth: string;
+          user_agent: string | null;
+          last_seen_at: string;
+          created_at: string;
+          updated_at: string;
+        };
+        Insert: {
+          id?: string;
+          profile_id: string;
+          endpoint: string;
+          p256dh: string;
+          auth: string;
+          user_agent?: string | null;
+          last_seen_at?: string;
+          created_at?: string;
+          updated_at?: string;
+        };
+        Update: {
+          id?: string;
+          profile_id?: string;
+          endpoint?: string;
+          p256dh?: string;
+          auth?: string;
+          user_agent?: string | null;
+          last_seen_at?: string;
+          created_at?: string;
+          updated_at?: string;
+        };
+        Relationships: [];
+      };
+      notification_deliveries: {
+        Row: {
+          id: string;
+          notification_id: string;
+          subscription_id: string;
+          channel: Database["public"]["Enums"]["notification_delivery_channel"];
+          status: Database["public"]["Enums"]["notification_delivery_status"];
+          attempt_count: number;
+          last_attempt_at: string;
+          sent_at: string | null;
+          last_error: string | null;
+          created_at: string;
+        };
+        Insert: {
+          id?: string;
+          notification_id: string;
+          subscription_id: string;
+          channel: Database["public"]["Enums"]["notification_delivery_channel"];
+          status?: Database["public"]["Enums"]["notification_delivery_status"];
+          attempt_count?: number;
+          last_attempt_at?: string;
+          sent_at?: string | null;
+          last_error?: string | null;
+          created_at?: string;
+        };
+        Update: {
+          id?: string;
+          notification_id?: string;
+          subscription_id?: string;
+          channel?: Database["public"]["Enums"]["notification_delivery_channel"];
+          status?: Database["public"]["Enums"]["notification_delivery_status"];
+          attempt_count?: number;
+          last_attempt_at?: string;
+          sent_at?: string | null;
+          last_error?: string | null;
           created_at?: string;
         };
         Relationships: [];
@@ -628,6 +766,201 @@ export type Database = {
         };
         Relationships: [];
       };
+      push_campaigns: {
+        Row: {
+          id: string;
+          created_by: string;
+          title: string;
+          body: string;
+          target: Database["public"]["Enums"]["push_campaign_target"];
+          campaign_type: Database["public"]["Enums"]["push_campaign_type"];
+          status: Database["public"]["Enums"]["push_campaign_status"];
+          audience_mode: Database["public"]["Enums"]["push_campaign_audience_mode"];
+          audience_percentage: number;
+          audience_estimated_count: number;
+          audience_selected_count: number;
+          campaign_period_days: number;
+          sends_per_recipient: number;
+          starts_at: string;
+          ends_at: string;
+          delivery_window_start: string;
+          delivery_window_end: string;
+          delivery_timezone: string;
+          county: string | null;
+          specialty_id: string | null;
+          specialty_scope: Database["public"]["Enums"]["push_campaign_specialty_scope"];
+          promoted_worker_profile_id: string | null;
+          worker_destination: string | null;
+          employer_destination: string | null;
+          recipient_count: number;
+          scheduled_delivery_count: number;
+          sent_count: number;
+          failed_count: number;
+          created_at: string;
+          updated_at: string;
+        };
+        Insert: {
+          id?: string;
+          created_by: string;
+          title: string;
+          body: string;
+          target: Database["public"]["Enums"]["push_campaign_target"];
+          campaign_type?: Database["public"]["Enums"]["push_campaign_type"];
+          status?: Database["public"]["Enums"]["push_campaign_status"];
+          audience_mode?: Database["public"]["Enums"]["push_campaign_audience_mode"];
+          audience_percentage?: number;
+          audience_estimated_count?: number;
+          audience_selected_count?: number;
+          campaign_period_days: number;
+          sends_per_recipient: number;
+          starts_at: string;
+          ends_at: string;
+          delivery_window_start?: string;
+          delivery_window_end?: string;
+          delivery_timezone?: string;
+          county?: string | null;
+          specialty_id?: string | null;
+          specialty_scope?: Database["public"]["Enums"]["push_campaign_specialty_scope"];
+          promoted_worker_profile_id?: string | null;
+          worker_destination?: string | null;
+          employer_destination?: string | null;
+          recipient_count?: number;
+          scheduled_delivery_count?: number;
+          sent_count?: number;
+          failed_count?: number;
+          created_at?: string;
+          updated_at?: string;
+        };
+        Update: {
+          id?: string;
+          created_by?: string;
+          title?: string;
+          body?: string;
+          target?: Database["public"]["Enums"]["push_campaign_target"];
+          campaign_type?: Database["public"]["Enums"]["push_campaign_type"];
+          status?: Database["public"]["Enums"]["push_campaign_status"];
+          audience_mode?: Database["public"]["Enums"]["push_campaign_audience_mode"];
+          audience_percentage?: number;
+          audience_estimated_count?: number;
+          audience_selected_count?: number;
+          campaign_period_days?: number;
+          sends_per_recipient?: number;
+          starts_at?: string;
+          ends_at?: string;
+          delivery_window_start?: string;
+          delivery_window_end?: string;
+          delivery_timezone?: string;
+          county?: string | null;
+          specialty_id?: string | null;
+          specialty_scope?: Database["public"]["Enums"]["push_campaign_specialty_scope"];
+          promoted_worker_profile_id?: string | null;
+          worker_destination?: string | null;
+          employer_destination?: string | null;
+          recipient_count?: number;
+          scheduled_delivery_count?: number;
+          sent_count?: number;
+          failed_count?: number;
+          created_at?: string;
+          updated_at?: string;
+        };
+        Relationships: [];
+      };
+      push_campaign_recipients: {
+        Row: {
+          id: string;
+          campaign_id: string;
+          profile_id: string;
+          role: Database["public"]["Enums"]["profile_role"];
+          created_at: string;
+        };
+        Insert: {
+          id?: string;
+          campaign_id: string;
+          profile_id: string;
+          role: Database["public"]["Enums"]["profile_role"];
+          created_at?: string;
+        };
+        Update: {
+          id?: string;
+          campaign_id?: string;
+          profile_id?: string;
+          role?: Database["public"]["Enums"]["profile_role"];
+          created_at?: string;
+        };
+        Relationships: [];
+      };
+      push_campaign_deliveries: {
+        Row: {
+          id: string;
+          campaign_id: string;
+          recipient_id: string;
+          occurrence_no: number;
+          scheduled_for: string;
+          status: Database["public"]["Enums"]["push_campaign_delivery_status"];
+          attempt_count: number;
+          claimed_at: string | null;
+          notification_id: string | null;
+          sent_at: string | null;
+          last_error: string | null;
+          created_at: string;
+        };
+        Insert: {
+          id?: string;
+          campaign_id: string;
+          recipient_id: string;
+          occurrence_no: number;
+          scheduled_for: string;
+          status?: Database["public"]["Enums"]["push_campaign_delivery_status"];
+          attempt_count?: number;
+          claimed_at?: string | null;
+          notification_id?: string | null;
+          sent_at?: string | null;
+          last_error?: string | null;
+          created_at?: string;
+        };
+        Update: {
+          id?: string;
+          campaign_id?: string;
+          recipient_id?: string;
+          occurrence_no?: number;
+          scheduled_for?: string;
+          status?: Database["public"]["Enums"]["push_campaign_delivery_status"];
+          attempt_count?: number;
+          claimed_at?: string | null;
+          notification_id?: string | null;
+          sent_at?: string | null;
+          last_error?: string | null;
+          created_at?: string;
+        };
+        Relationships: [];
+      };
+      push_campaign_profile_visits: {
+        Row: {
+          id: string;
+          campaign_id: string;
+          worker_profile_id: string;
+          employer_profile_id: string;
+          visit_day: string;
+          visited_at: string;
+        };
+        Insert: {
+          id?: string;
+          campaign_id: string;
+          worker_profile_id: string;
+          employer_profile_id: string;
+          visit_day?: string;
+          visited_at?: string;
+        };
+        Update: {
+          id?: string;
+          campaign_id?: string;
+          worker_profile_id?: string;
+          employer_profile_id?: string;
+          visit_day?: string;
+          visited_at?: string;
+        };
+        Relationships: [];
+      };
     };
     Views: {
       public_worker_profiles: {
@@ -662,11 +995,20 @@ export type Database = {
         Row: {
           id: string;
           business_name: string;
+          phone: string | null;
+          business_email: string | null;
           description: string | null;
           location: string | null;
+          county: string | null;
+          town: string | null;
           address_line: string | null;
           profile_image_path: string | null;
           salon_info: Json;
+          category_id: string | null;
+          category_name: string | null;
+          category_slug: string | null;
+          extra_specialty_ids: string[];
+          extra_specialty_names: string[];
           created_at: string;
           updated_at: string;
         };
@@ -712,11 +1054,15 @@ export type Database = {
           p_business_email?: string | null;
           p_description?: string | null;
           p_location?: string | null;
+          p_county?: string | null;
+          p_town?: string | null;
           p_address_line?: string | null;
           p_latitude?: number | null;
           p_longitude?: number | null;
           p_profile_image_path?: string | null;
           p_salon_info?: Json;
+          p_category_id?: string | null;
+          p_extra_specialty_ids?: string[];
         };
         Returns: string;
       };
@@ -763,6 +1109,10 @@ export type Database = {
       bc_record_worker_profile_view: {
         Args: { p_worker_profile_id: string };
         Returns: boolean;
+      };
+      bc_claim_notification_push_delivery: {
+        Args: { p_notification_id: string; p_subscription_id: string };
+        Returns: string | null;
       };
       bc_get_worker_profile_analytics: {
         Args: { p_worker_profile_id: string };
@@ -863,6 +1213,102 @@ export type Database = {
         Args: Record<string, never>;
         Returns: Database["public"]["Tables"]["categories"]["Row"][];
       };
+      bc_preview_push_campaign_audience: {
+        Args: {
+          p_target: Database["public"]["Enums"]["push_campaign_target"];
+          p_campaign_type?: Database["public"]["Enums"]["push_campaign_type"];
+          p_audience_percentage?: number;
+          p_county?: string | null;
+          p_specialty_id?: string | null;
+          p_specialty_scope?: Database["public"]["Enums"]["push_campaign_specialty_scope"];
+          p_promoted_worker_profile_id?: string | null;
+        };
+        Returns: {
+          eligible_count: number;
+          selected_count: number;
+        }[];
+      };
+      bc_create_push_campaign: {
+        Args: {
+          p_title: string;
+          p_body: string;
+          p_target: Database["public"]["Enums"]["push_campaign_target"];
+          p_campaign_type: Database["public"]["Enums"]["push_campaign_type"];
+          p_audience_mode: Database["public"]["Enums"]["push_campaign_audience_mode"];
+          p_audience_percentage: number;
+          p_campaign_period_days: number;
+          p_sends_per_recipient: number;
+          p_starts_at: string;
+          p_ends_at: string;
+          p_delivery_window_start: string;
+          p_delivery_window_end: string;
+          p_delivery_timezone: string;
+          p_county?: string | null;
+          p_specialty_id?: string | null;
+          p_specialty_scope?: Database["public"]["Enums"]["push_campaign_specialty_scope"];
+          p_promoted_worker_profile_id?: string | null;
+          p_worker_destination?: string | null;
+          p_employer_destination?: string | null;
+        };
+        Returns: string;
+      };
+      bc_activate_push_campaign: {
+        Args: { p_campaign_id: string };
+        Returns: Database["public"]["Enums"]["push_campaign_status"];
+      };
+      bc_record_push_campaign_profile_visit: {
+        Args: { p_campaign_id: string; p_worker_profile_id: string };
+        Returns: boolean;
+      };
+      bc_pause_push_campaign: {
+        Args: { p_campaign_id: string };
+        Returns: Database["public"]["Enums"]["push_campaign_status"];
+      };
+      bc_resume_push_campaign: {
+        Args: { p_campaign_id: string };
+        Returns: Database["public"]["Enums"]["push_campaign_status"];
+      };
+      bc_cancel_push_campaign: {
+        Args: { p_campaign_id: string };
+        Returns: Database["public"]["Enums"]["push_campaign_status"];
+      };
+      bc_duplicate_push_campaign: {
+        Args: { p_campaign_id: string };
+        Returns: string;
+      };
+      bc_claim_push_campaign_deliveries: {
+        Args: { p_limit?: number };
+        Returns: {
+          delivery_id: string;
+          campaign_id: string;
+          profile_id: string;
+        }[];
+      };
+      bc_create_push_campaign_notification: {
+        Args: { p_delivery_id: string };
+        Returns: string | null;
+      };
+      bc_finalize_push_campaign_delivery: {
+        Args: {
+          p_delivery_id: string;
+          p_status: Database["public"]["Enums"]["push_campaign_delivery_status"];
+          p_last_error?: string | null;
+        };
+        Returns: undefined;
+      };
+      bc_get_push_campaign_analytics: {
+        Args: { p_campaign_id: string };
+        Returns: {
+          intended_audience: number;
+          scheduled_recipients: number;
+          sent: number;
+          delivered: number;
+          failed: number;
+          profile_visits: number;
+          opened: number;
+          clicked: number;
+        }[];
+      };
     };
     Enums: {
       profile_role: "worker" | "employer" | "admin";
@@ -893,7 +1339,19 @@ export type Database = {
         | "request_accepted"
         | "request_considered"
         | "request_declined"
-        | "handshake_completed";
+        | "handshake_completed"
+        | "profile_views_aggregated"
+        | "push_campaign";
+      notification_delivery_channel: "push";
+      notification_delivery_status: "sending" | "sent" | "failed";
+      push_campaign_target: "worker" | "employer" | "both";
+      push_campaign_type: "general" | "promote_worker";
+      push_campaign_status:
+        "draft" | "scheduled" | "active" | "paused" | "completed" | "cancelled";
+      push_campaign_audience_mode: "all" | "percentage";
+      push_campaign_specialty_scope: "any" | "main" | "extra";
+      push_campaign_delivery_status:
+        "pending" | "processing" | "sent" | "failed";
     };
     CompositeTypes: Record<string, never>;
   };

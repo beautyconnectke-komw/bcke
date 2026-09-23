@@ -1,6 +1,9 @@
 import { z } from "zod";
+import { kenyaCounties } from "@/config/kenya";
 
 export const uuidSchema = z.uuid();
+
+export const kenyaCountySchema = z.enum(kenyaCounties);
 
 export const profileRoleSchema = z.enum(["worker", "employer", "admin"]);
 
@@ -22,7 +25,7 @@ export const workerApplicationSchema = z.object({
   fullName: z.string().trim().min(2).max(160),
   phone: z.string().trim().max(40).nullable().optional(),
   location: z.string().trim().max(160).nullable().optional(),
-  county: z.string().trim().max(80).nullable().optional(),
+  county: kenyaCountySchema.nullable().optional(),
   town: z.string().trim().max(120).nullable().optional(),
   categoryId: uuidSchema.nullable().optional(),
   profilePhotoPath: z.string().trim().max(500).nullable().optional(),
@@ -39,7 +42,7 @@ export const workerApplicationSchema = z.object({
 
 export const workerApplicationSubmissionSchema = workerApplicationSchema.extend(
   {
-    county: z.string().trim().min(2).max(80),
+    county: kenyaCountySchema,
     town: z.string().trim().min(2).max(120),
     categoryId: uuidSchema,
   },
@@ -54,7 +57,7 @@ export const updateWorkerProfileSchema = workerApplicationSchema
 
 export const workerContactProfileSchema = z.object({
   phone: z.string().trim().max(40).nullable().optional(),
-  county: z.string().trim().max(80).nullable().optional(),
+  county: kenyaCountySchema.nullable().optional(),
   town: z.string().trim().max(120).nullable().optional(),
   shortBio: z.string().trim().max(600).nullable().optional(),
 });
@@ -66,19 +69,42 @@ export const workerReviewedProfileSchema = z.object({
   portfolioPaths: z.array(z.string().trim().max(500)).max(4).default([]),
 });
 
-export const employerProfileSchema = z.object({
-  businessName: z.string().trim().min(2).max(160),
-  contactPerson: z.string().trim().max(160).nullable().optional(),
-  phone: z.string().trim().max(40).nullable().optional(),
-  businessEmail: z.email().nullable().optional(),
-  description: z.string().trim().max(1200).nullable().optional(),
-  location: z.string().trim().max(160).nullable().optional(),
-  addressLine: z.string().trim().max(240).nullable().optional(),
-  latitude: z.number().min(-90).max(90).nullable().optional(),
-  longitude: z.number().min(-180).max(180).nullable().optional(),
-  profileImagePath: z.string().trim().max(500).nullable().optional(),
-  salonInfo: z.record(z.string(), z.unknown()).default({}),
-});
+export const employerProfileSchema = z
+  .object({
+    businessName: z.string().trim().min(2).max(160),
+    contactPerson: z.string().trim().max(160).nullable().optional(),
+    phone: z.string().trim().max(40).nullable().optional(),
+    businessEmail: z.email().nullable().optional(),
+    description: z.string().trim().max(1200).nullable().optional(),
+    location: z.string().trim().max(160).nullable().optional(),
+    county: kenyaCountySchema,
+    town: z.string().trim().min(2).max(120),
+    addressLine: z.string().trim().max(240).nullable().optional(),
+    latitude: z.number().min(-90).max(90).nullable().optional(),
+    longitude: z.number().min(-180).max(180).nullable().optional(),
+    profileImagePath: z.string().trim().max(500).nullable().optional(),
+    categoryId: uuidSchema,
+    extraSpecialtyIds: z.array(uuidSchema).max(12).default([]),
+    salonInfo: z.record(z.string(), z.unknown()).default({}),
+  })
+  .superRefine((value, context) => {
+    if (
+      new Set(value.extraSpecialtyIds).size !== value.extraSpecialtyIds.length
+    ) {
+      context.addIssue({
+        code: "custom",
+        path: ["extraSpecialtyIds"],
+        message: "Extra specialities cannot be duplicated.",
+      });
+    }
+    if (value.extraSpecialtyIds.includes(value.categoryId)) {
+      context.addIssue({
+        code: "custom",
+        path: ["extraSpecialtyIds"],
+        message: "The main speciality cannot also be an extra speciality.",
+      });
+    }
+  });
 
 export const requestWorkerSchema = z.object({
   workerProfileId: uuidSchema,
@@ -120,6 +146,18 @@ export const notificationIdSchema = z.object({
   notificationId: uuidSchema,
 });
 
+export const pushSubscriptionSchema = z.object({
+  endpoint: z.url().max(2000),
+  keys: z.object({
+    p256dh: z.string().trim().min(20).max(500),
+    auth: z.string().trim().min(10).max(500),
+  }),
+});
+
+export const pushSubscriptionEndpointSchema = z.object({
+  endpoint: z.url().max(2000),
+});
+
 export type WorkerApplicationInput = z.infer<typeof workerApplicationSchema>;
 export type WorkerApplicationSubmissionInput = z.infer<
   typeof workerApplicationSubmissionSchema
@@ -148,3 +186,4 @@ export type AdminEmployerDecisionInput = z.infer<
   typeof adminEmployerDecisionSchema
 >;
 export type MarketplaceFiltersInput = z.infer<typeof marketplaceFiltersSchema>;
+export type PushSubscriptionInput = z.infer<typeof pushSubscriptionSchema>;

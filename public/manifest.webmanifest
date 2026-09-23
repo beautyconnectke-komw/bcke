@@ -1,0 +1,21 @@
+{
+  "name": "Beauty Connect",
+  "short_name": "Beauty Connect",
+  "description": "A vetted marketplace for beauty professionals and salons.",
+  "start_url": "/",
+  "display": "standalone",
+  "background_color": "#faf9f7",
+  "theme_color": "#035715",
+  "icons": [
+    {
+      "src": "/logo/logo.png",
+      "sizes": "192x192",
+      "type": "image/png"
+    },
+    {
+      "src": "/logo/logo.png",
+      "sizes": "512x512",
+      "type": "image/png"
+    }
+  ]
+}

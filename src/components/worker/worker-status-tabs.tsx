@@ -40,6 +40,8 @@ export function WorkerStatusTabs({
     if (!normalizedSearch) return true;
     const searchableText = [
       item.employer?.business_name,
+      item.employer?.town,
+      item.employer?.county,
       item.employer?.location,
       item.employer?.description,
       item.message,

@@ -1,18 +1,31 @@
 "use client";
 
 import { useEffect } from "react";
-import { recordWorkerProfileViewAction } from "@/app/actions/beauty-connect";
+import {
+  recordPushCampaignProfileVisitAction,
+  recordWorkerProfileViewAction,
+} from "@/app/actions/beauty-connect";
 
 export function WorkerProfileViewTracker({
   workerProfileId,
+  campaignId,
 }: {
   workerProfileId: string;
+  campaignId?: string | null;
 }) {
   useEffect(() => {
     void recordWorkerProfileViewAction(workerProfileId).catch(() => {
       // View analytics must never block the worker profile.
     });
-  }, [workerProfileId]);
+    if (campaignId) {
+      void recordPushCampaignProfileVisitAction(
+        workerProfileId,
+        campaignId,
+      ).catch(() => {
+        // Campaign attribution must never block the worker profile.
+      });
+    }
+  }, [campaignId, workerProfileId]);
 
   return null;
 }

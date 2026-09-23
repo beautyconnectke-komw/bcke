@@ -1,5 +1,6 @@
 import { getNotifications } from "@/lib/domain/beauty-connect";
 import { NotificationList } from "@/components/shared/notification-list";
+import { PushNotificationControl } from "@/components/shared/push-notification-control";
 import { SectionHeading, SetupState } from "@/components/shared/ui";
 
 export default async function EmployerNotificationsPage() {
@@ -11,6 +12,7 @@ export default async function EmployerNotificationsPage() {
           eyebrow="Updates"
           title="Notifications"
           description="See when workers respond and connections complete."
+          action={<PushNotificationControl />}
         />
         <div className="mt-8">
           <NotificationList notifications={notifications} />

@@ -10,6 +10,7 @@ import {
   CircleUserRound,
   Home,
   LogOut,
+  Megaphone,
   Menu,
   ShieldCheck,
   Star,
@@ -17,7 +18,8 @@ import {
   UserRound,
 } from "lucide-react";
 import { useQueryClient } from "@tanstack/react-query";
-import { useState } from "react";
+import { useEffect, useState } from "react";
+import { getUnreadNotificationCountAction } from "@/app/actions/beauty-connect";
 import { createClient } from "@/lib/supabase/client";
 import { cn } from "@/lib/utils";
 
@@ -36,10 +38,12 @@ const employerItems = [
 export function AppShell({
   role,
   displayName,
+  initialUnreadCount,
   children,
 }: {
   role: "worker" | "employer";
   displayName?: string | null;
+  initialUnreadCount: number;
   children: React.ReactNode;
 }) {
   const pathname = usePathname();
@@ -70,6 +74,10 @@ export function AppShell({
             </span>
           </Link>
           <div className="hidden items-center gap-4 sm:flex">
+            <NotificationBell
+              role={role}
+              initialUnreadCount={initialUnreadCount}
+            />
             <div className="text-right">
               <p className="text-[10px] font-semibold uppercase tracking-[0.12em] text-muted-foreground">
                 {role}
@@ -87,14 +95,20 @@ export function AppShell({
               <LogOut className="size-4" />
             </button>
           </div>
-          <button
-            className="rounded-md p-2 sm:hidden"
-            aria-label="Open navigation"
-            title="Open navigation"
-            onClick={() => setOpen((value) => !value)}
-          >
-            <Menu className="size-5" />
-          </button>
+          <div className="flex items-center gap-1 sm:hidden">
+            <NotificationBell
+              role={role}
+              initialUnreadCount={initialUnreadCount}
+            />
+            <button
+              className="rounded-md p-2"
+              aria-label="Open navigation"
+              title="Open navigation"
+              onClick={() => setOpen((value) => !value)}
+            >
+              <Menu className="size-5" />
+            </button>
+          </div>
         </div>
         {open ? (
           <div className="border-t border-border px-5 py-3 sm:hidden">
@@ -148,6 +162,72 @@ export function AppShell({
   );
 }
 
+function NotificationBell({
+  role,
+  initialUnreadCount,
+}: {
+  role: "worker" | "employer";
+  initialUnreadCount: number;
+}) {
+  const [unreadCount, setUnreadCount] = useState(initialUnreadCount);
+
+  useEffect(() => {
+    let active = true;
+
+    async function refreshUnreadCount() {
+      try {
+        const count = await getUnreadNotificationCountAction();
+        if (active) setUnreadCount(count);
+      } catch {
+        // The server-rendered count remains usable if a refresh is interrupted.
+      }
+    }
+
+    const handleNotificationChange = () => {
+      void refreshUnreadCount();
+    };
+
+    void refreshUnreadCount();
+    const interval = window.setInterval(refreshUnreadCount, 30_000);
+    window.addEventListener(
+      "beauty-connect:notifications-changed",
+      handleNotificationChange,
+    );
+
+    return () => {
+      active = false;
+      window.clearInterval(interval);
+      window.removeEventListener(
+        "beauty-connect:notifications-changed",
+        handleNotificationChange,
+      );
+    };
+  }, []);
+
+  const href =
+    role === "worker" ? "/worker/notifications" : "/employer/notifications";
+
+  return (
+    <Link
+      href={href}
+      aria-label={
+        unreadCount > 0
+          ? `${unreadCount} unread notifications`
+          : "Notifications"
+      }
+      title="Notifications"
+      className="relative grid size-9 place-items-center rounded-full text-muted-foreground transition hover:bg-muted hover:text-foreground"
+    >
+      <Bell className="size-[18px]" />
+      {unreadCount > 0 ? (
+        <span className="absolute -right-0.5 -top-0.5 min-w-4 rounded-full bg-[#822a4b] px-1 text-center text-[10px] font-bold leading-4 text-white">
+          {unreadCount > 99 ? "99+" : unreadCount}
+        </span>
+      ) : null}
+    </Link>
+  );
+}
+
 export function AdminShell({
   children,
   displayName,
@@ -167,6 +247,7 @@ export function AdminShell({
     ["/admin/employers", "Employers", BriefcaseBusiness],
     ["/admin/handshakes", "Handshakes", ShieldCheck],
     ["/admin/notifications", "Notifications", Bell],
+    ["/admin/campaigns", "Push Campaigns", Megaphone],
     ["/admin/settings", "Settings", CircleUserRound],
   ] as const;
   async function signOut() {

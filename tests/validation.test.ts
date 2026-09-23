@@ -35,6 +35,32 @@ describe("Beauty Connect input validation", () => {
     ).toThrow();
   });
 
+  it("requires supported employer location and structured speciality selections", () => {
+    expect(() =>
+      employerProfileSchema.parse({
+        businessName: "Studio Nine",
+        county: "Not a Kenyan county",
+        town: "Nairobi",
+        categoryId: "00000000-0000-0000-0000-000000000001",
+      }),
+    ).toThrow();
+  });
+
+  it("rejects duplicate employer extra specialities and main-speciality overlap", () => {
+    expect(() =>
+      employerProfileSchema.parse({
+        businessName: "Studio Nine",
+        county: "Nairobi",
+        town: "Nairobi",
+        categoryId: "00000000-0000-0000-0000-000000000001",
+        extraSpecialtyIds: [
+          "00000000-0000-0000-0000-000000000001",
+          "00000000-0000-0000-0000-000000000001",
+        ],
+      }),
+    ).toThrow();
+  });
+
   it("requires valid worker IDs for employer requests", () => {
     expect(() =>
       requestWorkerSchema.parse({

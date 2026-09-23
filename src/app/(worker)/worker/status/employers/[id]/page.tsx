@@ -38,12 +38,7 @@ export default async function WorkerEmployerDetailPage({
       "employer-images",
       employer.profile_image_path,
     );
-    const services =
-      typeof employer.salon_info === "object" &&
-      employer.salon_info &&
-      "services" in employer.salon_info
-        ? String(employer.salon_info.services ?? "")
-        : "";
+    const legacyServices = getLegacyServices(employer.salon_info);
 
     return (
       <div className="mx-auto max-w-4xl">
@@ -77,7 +72,12 @@ export default async function WorkerEmployerDetailPage({
               </h1>
               <p className="mt-3 flex items-start gap-2 text-sm text-muted-foreground">
                 <MapPin className="mt-0.5 size-4 shrink-0" />
-                {[employer.location, employer.address_line]
+                {[
+                  employer.town,
+                  employer.county,
+                  employer.location,
+                  employer.address_line,
+                ]
                   .filter(Boolean)
                   .join(", ") || "Location not shared"}
               </p>
@@ -123,10 +123,31 @@ export default async function WorkerEmployerDetailPage({
               </p>
             </div>
             <div>
-              <h2 className="text-lg font-semibold">Services offered</h2>
-              <p className="mt-3 text-sm leading-7 text-muted-foreground">
-                {services || "Services have not been listed yet."}
-              </p>
+              <h2 className="text-lg font-semibold">Salon specialities</h2>
+              {employer.category_name ||
+              employer.extra_specialty_names.length ? (
+                <div className="mt-3 flex flex-wrap gap-2">
+                  {[employer.category_name, ...employer.extra_specialty_names]
+                    .filter(Boolean)
+                    .map((specialty) => (
+                      <span
+                        key={specialty}
+                        className="rounded-full bg-muted px-3 py-1 text-xs font-medium"
+                      >
+                        {specialty}
+                      </span>
+                    ))}
+                </div>
+              ) : (
+                <p className="mt-3 text-sm leading-7 text-muted-foreground">
+                  No structured specialities have been listed yet.
+                </p>
+              )}
+              {legacyServices ? (
+                <p className="mt-3 text-xs leading-6 text-muted-foreground">
+                  Preserved legacy services: {legacyServices}
+                </p>
+              ) : null}
             </div>
             <div>
               <h2 className="text-lg font-semibold">Salon images</h2>
@@ -167,4 +188,10 @@ export default async function WorkerEmployerDetailPage({
   } catch {
     return <SetupState />;
   }
+}
+
+function getLegacyServices(value: unknown) {
+  if (!value || typeof value !== "object" || Array.isArray(value)) return "";
+  const services = (value as Record<string, unknown>).services;
+  return typeof services === "string" ? services : "";
 }

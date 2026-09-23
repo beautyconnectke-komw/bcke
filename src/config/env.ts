@@ -1,11 +1,16 @@
 const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL;
 const supabasePublishableKey = process.env.NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY;
+const vapidPublicKey = process.env.NEXT_PUBLIC_VAPID_PUBLIC_KEY;
 
 export const env = {
   supabase: {
     url: supabaseUrl,
     publishableKey: supabasePublishableKey,
     isConfigured: Boolean(supabaseUrl && supabasePublishableKey),
+  },
+  push: {
+    publicKey: vapidPublicKey,
+    isConfigured: Boolean(vapidPublicKey),
   },
 };
 

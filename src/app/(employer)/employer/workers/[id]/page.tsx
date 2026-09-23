@@ -19,11 +19,17 @@ import { WorkerProfileViewTracker } from "@/components/employer/worker-profile-v
 
 export default async function WorkerDetailPage({
   params,
+  searchParams,
 }: {
   params: Promise<{ id: string }>;
+  searchParams: Promise<{ campaign_id?: string | string[] }>;
 }) {
   try {
     const { id } = await params;
+    const query = await searchParams;
+    const campaignId = Array.isArray(query.campaign_id)
+      ? query.campaign_id[0]
+      : query.campaign_id;
     const [worker, portfolio, currentRequest] = await Promise.all([
       getWorkerProfile(id),
       getWorkerPortfolio(id),
@@ -46,7 +52,10 @@ export default async function WorkerDetailPage({
     );
     return (
       <div className="mx-auto max-w-5xl">
-        <WorkerProfileViewTracker workerProfileId={worker.id} />
+        <WorkerProfileViewTracker
+          workerProfileId={worker.id}
+          campaignId={campaignId}
+        />
         <Link
           href="/employer/workers"
           className="inline-flex items-center gap-2 text-sm text-muted-foreground hover:text-foreground"

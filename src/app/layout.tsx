@@ -18,6 +18,7 @@ export const metadata: Metadata = {
   title: "Beauty Connect",
   description:
     "A vetted marketplace foundation for beauty professionals and salons.",
+  manifest: "/manifest.webmanifest",
 };
 
 export default function RootLayout({ children }: LayoutProps<"/">) {

@@ -16,6 +16,7 @@ import { kenyaCounties } from "@/config/kenya";
 import {
   workerApplicationSchema,
   workerApplicationSubmissionSchema,
+  kenyaCountySchema,
   type WorkerApplicationInput,
   type WorkerApplicationSubmissionInput,
 } from "@/lib/validations/beauty-connect";
@@ -174,7 +175,7 @@ export function WorkerForm({
         profilePhotoPath,
         categoryId: values.categoryId || null,
         phone: values.phone || null,
-        county: values.county || null,
+        county: values.county ? kenyaCountySchema.parse(values.county) : null,
         town: values.town || null,
         location: values.town || values.county || null,
         shortBio: values.shortBio || null,
@@ -202,7 +203,9 @@ export function WorkerForm({
         } else {
           const updated = await updateWorkerProfileAction({
             phone: values.phone || null,
-            county: values.county || null,
+            county: values.county
+              ? kenyaCountySchema.parse(values.county)
+              : null,
             town: values.town || null,
             shortBio: values.shortBio || null,
           });

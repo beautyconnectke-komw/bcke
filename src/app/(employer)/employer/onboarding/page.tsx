@@ -3,13 +3,15 @@ import { SectionHeading, SetupState } from "@/components/shared/ui";
 import {
   getCurrentEmployerGallery,
   getCurrentEmployerProfile,
+  getCategories,
 } from "@/lib/domain/beauty-connect";
 
 export default async function EmployerOnboardingPage() {
   try {
-    const [profile, gallery] = await Promise.all([
+    const [profile, gallery, categories] = await Promise.all([
       getCurrentEmployerProfile(),
       getCurrentEmployerGallery(),
+      getCategories(),
     ]);
     return (
       <div className="mx-auto w-full min-w-0 max-w-4xl px-2 sm:px-0">
@@ -23,7 +25,11 @@ export default async function EmployerOnboardingPage() {
           description="A complete profile helps workers make a confident decision about your request."
         />
         <div className="mt-8 min-w-0">
-          <EmployerForm profile={profile} gallery={gallery} />
+          <EmployerForm
+            profile={profile}
+            categories={categories}
+            gallery={gallery}
+          />
         </div>
       </div>
     );

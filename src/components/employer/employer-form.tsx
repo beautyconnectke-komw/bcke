@@ -3,34 +3,42 @@
 import { useRouter } from "next/navigation";
 import Image from "next/image";
 import { useState } from "react";
-import { useForm } from "react-hook-form";
+import { useForm, useWatch } from "react-hook-form";
 import {
   createEmployerProfileAction,
   removeEmployerGalleryImageAction,
 } from "@/app/actions/beauty-connect";
 import { createClient } from "@/lib/supabase/client";
 import { env } from "@/config/env";
+import { kenyaCounties } from "@/config/kenya";
 import {
   employerProfileSchema,
   type EmployerProfileInput,
 } from "@/lib/validations/beauty-connect";
-import type { EmployerProfile } from "@/lib/domain/beauty-connect";
+import type { Category, EmployerProfile } from "@/lib/domain/beauty-connect";
 import type { Tables } from "@/types/database";
 import { publicImageUrl } from "@/lib/utils";
 import { Button } from "@/components/shared/ui";
 
-type FormValues = Omit<EmployerProfileInput, "salonInfo"> & {
-  salonServices: string;
+type FormValues = Omit<
+  EmployerProfileInput,
+  "salonInfo" | "county" | "town" | "categoryId"
+> & {
+  county: string;
+  town: string;
+  categoryId: string;
 };
 
 type PreviewFile = { file: File; url: string };
 
 export function EmployerForm({
   profile,
+  categories,
   gallery = [],
   mode = "onboarding",
 }: {
   profile: EmployerProfile | null;
+  categories: Category[];
   gallery?: Tables<"employer_gallery">[];
   mode?: "onboarding" | "edit";
 }) {
@@ -50,25 +58,29 @@ export function EmployerForm({
   );
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState<string | null>(null);
-  const existingServices =
-    typeof profile?.salon_info === "object" &&
-    profile.salon_info &&
-    "services" in profile.salon_info
-      ? String(profile.salon_info.services ?? "")
-      : "";
-  const { register, handleSubmit } = useForm<FormValues>({
+  const { register, handleSubmit, control } = useForm<FormValues>({
     defaultValues: {
       businessName: profile?.business_name ?? "",
       contactPerson: profile?.contact_person ?? "",
       phone: profile?.phone ?? "",
       businessEmail: profile?.business_email ?? "",
       location: profile?.location ?? "",
+      county: getSupportedCounty(profile?.county),
+      town: profile?.town ?? "",
       addressLine: profile?.address_line ?? "",
       description: profile?.description ?? "",
       profileImagePath: profile?.profile_image_path ?? null,
-      salonServices: existingServices,
+      categoryId: profile?.category_id ?? "",
+      extraSpecialtyIds: profile?.extra_specialty_ids ?? [],
     },
   });
+  const mainSpecialtyId = useWatch({ control, name: "categoryId" });
+  const selectedExtraSpecialtyIds =
+    useWatch({ control, name: "extraSpecialtyIds" }) ?? [];
+  const categoryField = register("categoryId");
+  const extraCategories = categories.filter(
+    (category) => category.id !== mainSpecialtyId,
+  );
 
   function selectProfileImage(file: File | null) {
     if (profilePreview?.startsWith("blob:")) {
@@ -156,9 +168,19 @@ export function EmployerForm({
         businessEmail: values.businessEmail || null,
         description: values.description || null,
         location: values.location || null,
+        county: values.county,
+        town: values.town,
         addressLine: values.addressLine || null,
         profileImagePath,
-        salonInfo: { services: values.salonServices.trim() },
+        categoryId: values.categoryId,
+        extraSpecialtyIds: [
+          ...new Set(
+            (values.extraSpecialtyIds ?? []).filter(
+              (specialtyId) => specialtyId !== values.categoryId,
+            ),
+          ),
+        ],
+        salonInfo: getSalonInfo(profile?.salon_info),
       });
       const employerId = await createEmployerProfileAction(parsed);
       if (!employerId) {
@@ -247,11 +269,32 @@ export function EmployerForm({
             placeholder="Your name"
           />
         </Field>
-        <Field label="Location">
+        <Field
+          label="Existing location detail"
+          hint="This preserves the previous free-text location while county and town provide structured targeting data."
+        >
           <input
             {...register("location")}
             className="field"
-            placeholder="Nairobi, Kenya"
+            placeholder="Optional area or location detail"
+          />
+        </Field>
+        <Field label="County">
+          <select required {...register("county")} className="field">
+            <option value="">Choose your county</option>
+            {kenyaCounties.map((county) => (
+              <option key={county} value={county}>
+                {county}
+              </option>
+            ))}
+          </select>
+        </Field>
+        <Field label="Town">
+          <input
+            required
+            {...register("town")}
+            className="field"
+            placeholder="Your town"
           />
         </Field>
         <Field label="Address">
@@ -296,13 +339,74 @@ export function EmployerForm({
             placeholder="Tell workers about your salon and the way you work."
           />
         </Field>
-        <Field label="Services offered" hint="Separate services with commas">
-          <input
-            {...register("salonServices")}
-            className="field"
-            placeholder="Hair, nails, makeup"
-          />
+      </section>
+
+      <section className="grid gap-5 border border-border p-4 sm:p-6">
+        <div>
+          <h2 className="text-lg font-semibold">Salon specialities</h2>
+          <p className="mt-1 text-sm text-muted-foreground">
+            Choose from the same admin-managed speciality catalogue used by
+            workers. Your main speciality is excluded from extra specialities.
+          </p>
+        </div>
+        <Field label="Main speciality">
+          <select required {...categoryField} className="field">
+            <option value="">Choose a speciality</option>
+            {categories.map((category) => (
+              <option key={category.id} value={category.id}>
+                {category.name}
+              </option>
+            ))}
+          </select>
         </Field>
+        <Field label="Extra specialities">
+          <div className="grid gap-2 sm:grid-cols-2">
+            {extraCategories.map((category) => {
+              const isSelected = selectedExtraSpecialtyIds.includes(
+                category.id,
+              );
+              const reachedLimit =
+                selectedExtraSpecialtyIds.length >= 12 && !isSelected;
+              return (
+                <label
+                  key={category.id}
+                  className={`flex min-h-12 items-center gap-3 border px-3 py-3 text-sm transition ${
+                    isSelected
+                      ? "border-foreground bg-foreground text-background"
+                      : "border-border bg-background hover:border-foreground"
+                  } ${reachedLimit ? "cursor-not-allowed opacity-50" : "cursor-pointer"}`}
+                >
+                  <input
+                    type="checkbox"
+                    value={category.id}
+                    {...register("extraSpecialtyIds")}
+                    disabled={reachedLimit}
+                    className="size-4 accent-current"
+                  />
+                  <span>{category.name}</span>
+                </label>
+              );
+            })}
+          </div>
+          <p className="text-xs text-muted-foreground">
+            {selectedExtraSpecialtyIds.length} of 12 extra specialities
+            selected.
+          </p>
+        </Field>
+        {getLegacyServices(profile?.salon_info) ? (
+          <div className="border border-dashed border-border bg-muted/30 p-3 text-sm text-muted-foreground">
+            <p className="font-medium text-foreground">
+              Legacy services text preserved
+            </p>
+            <p className="mt-1 whitespace-pre-wrap">
+              {getLegacyServices(profile?.salon_info)}
+            </p>
+            <p className="mt-1 text-xs">
+              This original value is retained for review and is not used for
+              speciality targeting.
+            </p>
+          </div>
+        ) : null}
       </section>
 
       <section className="grid gap-5 border border-border p-4 sm:p-6">
@@ -352,10 +456,7 @@ export function EmployerForm({
                 image.storage_path,
               );
               return (
-                <div
-                  key={image.id}
-                  className="relative aspect-square bg-muted"
-                >
+                <div key={image.id} className="relative aspect-square bg-muted">
                   {src ? (
                     <Image
                       src={src}
@@ -458,4 +559,27 @@ function Field({
       {children}
     </label>
   );
+}
+
+function getSalonInfo(
+  value: EmployerProfile["salon_info"] | undefined,
+): Record<string, unknown> {
+  return value && typeof value === "object" && !Array.isArray(value)
+    ? (value as Record<string, unknown>)
+    : {};
+}
+
+function getLegacyServices(
+  value: EmployerProfile["salon_info"] | undefined,
+): string {
+  const salonInfo = getSalonInfo(value);
+  return typeof salonInfo.services === "string" ? salonInfo.services : "";
+}
+
+function getSupportedCounty(
+  value: string | null | undefined,
+): (typeof kenyaCounties)[number] | "" {
+  return value && (kenyaCounties as readonly string[]).includes(value)
+    ? (value as (typeof kenyaCounties)[number])
+    : "";
 }

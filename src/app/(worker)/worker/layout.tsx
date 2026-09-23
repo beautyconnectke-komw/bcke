@@ -2,6 +2,7 @@ import { redirect } from "next/navigation";
 import { AppShell } from "@/components/shared/app-shell";
 import { SetupState } from "@/components/shared/ui";
 import { getAuthContext } from "@/lib/domain/auth";
+import { getUnreadNotificationCount } from "@/lib/domain/beauty-connect";
 import { AuthenticationRequiredError } from "@/lib/domain/errors";
 
 export default async function WorkerLayout({
@@ -17,8 +18,13 @@ export default async function WorkerLayout({
       redirect(
         profile.role === "employer" ? "/employer/home" : "/admin/dashboard",
       );
+    const unreadNotificationCount = await getUnreadNotificationCount();
     return (
-      <AppShell role="worker" displayName={profile.display_name}>
+      <AppShell
+        role="worker"
+        displayName={profile.display_name}
+        initialUnreadCount={unreadNotificationCount}
+      >
         {children}
       </AppShell>
     );

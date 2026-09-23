@@ -55,6 +55,39 @@ const profileUpdatesMigration = readFileSync(
   ),
   "utf8",
 );
+const normalNotificationsMigration = readFileSync(
+  join(
+    process.cwd(),
+    "supabase/migrations/20260922100000_normal_notifications_and_push.sql",
+  ),
+  "utf8",
+);
+const profileViewNotificationTypeMigration = readFileSync(
+  join(
+    process.cwd(),
+    "supabase/migrations/20260922090000_profile_view_notification_type.sql",
+  ),
+  "utf8",
+);
+const notificationIntegrityFixesMigration = readFileSync(
+  join(
+    process.cwd(),
+    "supabase/migrations/20260922110000_notification_integrity_fixes.sql",
+  ),
+  "utf8",
+);
+const employerTargetingMigration = readFileSync(
+  join(
+    process.cwd(),
+    "supabase/migrations/20260923100000_employer_targeting_foundation.sql",
+  ),
+  "utf8",
+);
+const pushCampaignMigration = readFileSync(
+  join(process.cwd(), "supabase/migrations/20260923110000_push_campaigns.sql"),
+  "utf8",
+);
+const serviceWorker = readFileSync(join(process.cwd(), "public/sw.js"), "utf8");
 
 describe("Supabase migration contract", () => {
   it("models account role, worker verification, and availability separately", () => {
@@ -270,5 +303,157 @@ describe("Supabase migration contract", () => {
     expect(profileUpdatesMigration).toContain(
       "create or replace function public.bc_reject_worker_profile_update",
     );
+  });
+
+  it("keeps normal notifications canonical and push delivery scoped", () => {
+    expect(profileViewNotificationTypeMigration).toContain(
+      "add value if not exists 'profile_views_aggregated'",
+    );
+    expect(normalNotificationsMigration).toContain(
+      "add column if not exists dedupe_key text",
+    );
+    expect(normalNotificationsMigration).toContain(
+      "create unique index if not exists notifications_profile_dedupe_idx",
+    );
+    expect(normalNotificationsMigration).toContain(
+      "create table public.notification_push_subscriptions",
+    );
+    expect(normalNotificationsMigration).toContain(
+      'create policy "Users can view their own push subscriptions"',
+    );
+    expect(normalNotificationsMigration).toContain(
+      "create or replace function public.bc_claim_notification_push_delivery",
+    );
+    expect(normalNotificationsMigration).toContain(
+      "create or replace function public.bc_record_worker_profile_view",
+    );
+    expect(normalNotificationsMigration).toContain(
+      "recent_unique_employers >= 3",
+    );
+    expect(normalNotificationsMigration).toContain("interval '7 days'");
+  });
+
+  it("keeps notification recipients and application events idempotent", () => {
+    expect(normalNotificationsMigration).toContain("    profile_id,");
+    expect(normalNotificationsMigration).not.toContain(
+      "    recipient_profile_id,\n    type,",
+    );
+    expect(notificationIntegrityFixesMigration).toContain(
+      "insert into public.notifications (\n    profile_id,",
+    );
+    expect(notificationIntegrityFixesMigration).toContain(
+      "application_submitted:profile_update:",
+    );
+    expect(notificationIntegrityFixesMigration).toContain(
+      "application_approved:profile_update:",
+    );
+    expect(notificationIntegrityFixesMigration).toContain(
+      "application_rejected:profile_update:",
+    );
+    expect(notificationIntegrityFixesMigration).toContain(
+      "application_submitted:worker:",
+    );
+    expect(notificationIntegrityFixesMigration).toContain(
+      "application_approved:worker:",
+    );
+    expect(notificationIntegrityFixesMigration).toContain(
+      "application_rejected:worker:",
+    );
+    expect(notificationIntegrityFixesMigration).toContain(
+      "create or replace function public.bc_approve_worker",
+    );
+    expect(notificationIntegrityFixesMigration).toContain(
+      "create or replace function public.bc_reject_worker",
+    );
+  });
+
+  it("prepares employers for structured audience targeting without dropping legacy values", () => {
+    expect(employerTargetingMigration).toContain(
+      "add column if not exists county text",
+    );
+    expect(employerTargetingMigration).toContain(
+      "add column if not exists town text",
+    );
+    expect(employerTargetingMigration).toContain(
+      "add column if not exists category_id uuid references public.categories(id)",
+    );
+    expect(employerTargetingMigration).toContain(
+      "add column if not exists extra_specialty_ids uuid[] not null default '{}'",
+    );
+    expect(employerTargetingMigration).toContain(
+      "employer_profiles_county_supported",
+    );
+    expect(employerTargetingMigration).toContain(
+      "employer_profiles_extra_specialties_unique",
+    );
+    expect(employerTargetingMigration).toContain(
+      "enforce_employer_specialty_catalogue",
+    );
+    expect(employerTargetingMigration).toContain(
+      "employer_specialty_migration_issues",
+    );
+    expect(employerTargetingMigration).toContain(
+      "employer_location_migration_issues",
+    );
+    expect(employerTargetingMigration).toContain(
+      "The original JSON value is deliberately not changed.",
+    );
+    expect(employerTargetingMigration).toContain(
+      "grant execute on function public.bc_create_employer_profile(",
+    );
+    expect(employerTargetingMigration).toContain(
+      "Admins can inspect employer specialty migration issues",
+    );
+    expect(employerTargetingMigration).toContain(
+      "Admins can inspect employer location migration issues",
+    );
+  });
+
+  it("keeps push campaigns separate, snapshot-based, and protected", () => {
+    expect(pushCampaignMigration).toContain(
+      "create table if not exists public.push_campaigns",
+    );
+    expect(pushCampaignMigration).toContain(
+      "create table if not exists public.push_campaign_recipients",
+    );
+    expect(pushCampaignMigration).toContain(
+      "create table if not exists public.push_campaign_deliveries",
+    );
+    expect(pushCampaignMigration).toContain(
+      "create table if not exists public.push_campaign_profile_visits",
+    );
+    expect(pushCampaignMigration).toContain(
+      "create type public.push_campaign_status",
+    );
+    expect(pushCampaignMigration).toContain("sends_per_recipient");
+    expect(pushCampaignMigration).toContain("push_campaign_specialty_scope");
+    expect(pushCampaignMigration).toContain("delivery_window_start");
+    expect(pushCampaignMigration).toContain(
+      "bc_push_campaign_eligible_profiles",
+    );
+    expect(pushCampaignMigration).toContain(
+      "bc_claim_push_campaign_deliveries",
+    );
+    expect(pushCampaignMigration).toContain(
+      "for update of delivery skip locked",
+    );
+    expect(pushCampaignMigration).toContain("'push_campaign'");
+    expect(pushCampaignMigration).toContain(
+      "alter table public.push_campaigns enable row level security",
+    );
+    expect(pushCampaignMigration).toContain("public.is_admin(auth.uid())");
+    expect(pushCampaignMigration).toContain("public.is_service_role()");
+    expect(pushCampaignMigration).toContain(
+      "bc_record_push_campaign_profile_visit",
+    );
+    expect(pushCampaignMigration).not.toContain("min(category.id)");
+  });
+
+  it("keeps push clicks authenticated and same-origin", () => {
+    expect(serviceWorker).toContain(
+      "/api/notifications/${encodeURIComponent(notificationId)}/read",
+    );
+    expect(serviceWorker).toContain('credentials: "include"');
+    expect(serviceWorker).toContain('!value.startsWith("//")');
   });
 });

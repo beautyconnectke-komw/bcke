@@ -27,7 +27,9 @@ export default async function AdminEmployersPage() {
               <div>
                 <h2 className="font-semibold">{employer.business_name}</h2>
                 <p className="mt-1 text-sm text-muted-foreground">
-                  {employer.location || "Location not shared"}
+                  {[employer.town, employer.county, employer.location]
+                    .filter(Boolean)
+                    .join(", ") || "Location not shared"}
                 </p>
               </div>
               <StatusPill tone={employer.is_suspended ? "danger" : "success"}>

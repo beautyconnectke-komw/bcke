@@ -14,7 +14,7 @@ export default async function AdminCategoriesPage() {
         <SectionHeading
           eyebrow="Configuration"
           title="Specialities"
-          description="Maintain one shared speciality list for worker onboarding."
+          description="Maintain one shared speciality list for workers and employers."
         />
         <div className="mt-8">
           <CategoryForm />

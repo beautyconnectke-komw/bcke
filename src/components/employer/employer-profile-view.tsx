@@ -14,7 +14,7 @@ import {
   Sparkles,
   Settings2,
 } from "lucide-react";
-import type { EmployerProfile } from "@/lib/domain/beauty-connect";
+import type { Category, EmployerProfile } from "@/lib/domain/beauty-connect";
 import type { Tables } from "@/types/database";
 import { env } from "@/config/env";
 import { publicImageUrl } from "@/lib/utils";
@@ -22,9 +22,11 @@ import { LinkButton } from "@/components/shared/ui";
 
 export function EmployerProfileView({
   profile,
+  categories,
   galleryPromise,
 }: {
   profile: EmployerProfile;
+  categories: Category[];
   galleryPromise: Promise<Tables<"employer_gallery">[]>;
 }) {
   const image = publicImageUrl(
@@ -32,8 +34,19 @@ export function EmployerProfileView({
     "employer-images",
     profile.profile_image_path,
   );
-  const services = getServices(profile.salon_info);
-  const location = [profile.location, profile.address_line]
+  const mainSpecialty = categories.find(
+    (category) => category.id === profile.category_id,
+  )?.name;
+  const extraSpecialties = profile.extra_specialty_ids
+    .map((id) => categories.find((category) => category.id === id)?.name)
+    .filter((name): name is string => Boolean(name));
+  const legacyServices = getLegacyServices(profile.salon_info);
+  const location = [
+    profile.town,
+    profile.county,
+    profile.location,
+    profile.address_line,
+  ]
     .filter(Boolean)
     .join(" · ");
 
@@ -95,25 +108,32 @@ export function EmployerProfileView({
             </p>
           </ProfileCard>
           <ProfileCard
-            title="What you offer"
+            title="Salon specialities"
             icon={<Sparkles className="size-5" />}
           >
-            {services.length ? (
+            {mainSpecialty || extraSpecialties.length ? (
               <div className="flex flex-wrap gap-2">
-                {services.map((service) => (
-                  <span
-                    key={service}
-                    className="rounded-full bg-[#e8def8] px-3 py-1.5 text-xs font-semibold text-[#1b1b1d]"
-                  >
-                    {service}
-                  </span>
-                ))}
+                {[mainSpecialty, ...extraSpecialties]
+                  .filter(Boolean)
+                  .map((specialty) => (
+                    <span
+                      key={specialty}
+                      className="rounded-full bg-[#e8def8] px-3 py-1.5 text-xs font-semibold text-[#1b1b1d]"
+                    >
+                      {specialty}
+                    </span>
+                  ))}
               </div>
             ) : (
               <p className="text-sm text-[#707a6d]">
-                Add your services from Edit profile.
+                Add your salon specialities from Edit profile.
               </p>
             )}
+            {legacyServices ? (
+              <p className="mt-3 text-xs text-[#707a6d]">
+                Preserved legacy services: {legacyServices}
+              </p>
+            ) : null}
           </ProfileCard>
           <ProfileCard
             title="Salon gallery"
@@ -300,10 +320,8 @@ function AccountLink({
     </Link>
   );
 }
-function getServices(value: EmployerProfile["salon_info"]) {
-  if (!value || typeof value !== "object" || !("services" in value)) return [];
-  return String(value.services ?? "")
-    .split(",")
-    .map((item) => item.trim())
-    .filter(Boolean);
+function getLegacyServices(value: EmployerProfile["salon_info"]) {
+  if (!value || typeof value !== "object" || Array.isArray(value)) return "";
+  const services = (value as Record<string, unknown>).services;
+  return typeof services === "string" ? services : "";
 }

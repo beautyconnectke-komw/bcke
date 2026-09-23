@@ -42,7 +42,14 @@ export default async function AdminEmployerDetailPage({
           <Detail label="Contact person" value={employer.contact_person} />
           <Detail label="Email" value={employer.business_email} />
           <Detail label="Phone" value={employer.phone} />
-          <Detail label="Location" value={employer.location} />
+          <Detail label="County" value={employer.county} />
+          <Detail label="Town" value={employer.town} />
+          <Detail label="Location detail" value={employer.location} />
+          <Detail label="Main speciality" value={employer.category_name} />
+          <Detail
+            label="Extra specialities"
+            value={employer.extra_specialty_names.join(", ") || null}
+          />
           <Detail label="Description" value={employer.description} />
           <div className="border-t border-border pt-5">
             <EmployerActions

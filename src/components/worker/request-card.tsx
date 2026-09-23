@@ -66,7 +66,9 @@ export function WorkerRequestCard({
               </h3>
               <p className="mt-1 flex items-center gap-1 truncate text-xs text-[#7a7478]">
                 <MapPin className="size-3 shrink-0" />
-                {employer.location ?? "Location not shared"}
+                {[employer.town, employer.county, employer.location]
+                  .filter(Boolean)
+                  .join(", ") || "Location not shared"}
               </p>
             </div>
           </Link>

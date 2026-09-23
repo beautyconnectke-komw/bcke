@@ -6,6 +6,12 @@ import { revalidateTag, unstable_cache } from "next/cache";
 import { cache } from "react";
 import { getSupabaseConfig } from "@/config/env";
 import { createClient } from "@/lib/supabase/server";
+import {
+  deliverPushForProfileViewActivity,
+  deliverPushForRequestEvent,
+  deliverPushForWorkerApplicationEvent,
+  deliverPushForWorkerProfileUpdateEvent,
+} from "@/lib/server/notification-push";
 import { getAuthContext, getOptionalAuthContext } from "@/lib/domain/auth";
 import {
   adminEmployerDecisionSchema,
@@ -13,6 +19,8 @@ import {
   employerProfileSchema,
   marketplaceFiltersSchema,
   notificationIdSchema,
+  pushSubscriptionEndpointSchema,
+  pushSubscriptionSchema,
   requestWorkerSchema,
   workerReactivationRequestSchema,
   respondToWorkerRequestSchema,
@@ -25,6 +33,7 @@ import {
   type AdminEmployerDecisionInput,
   type EmployerProfileInput,
   type MarketplaceFiltersInput,
+  type PushSubscriptionInput,
   type RequestWorkerInput,
   type WorkerReactivationRequestInput,
   type RespondToWorkerRequestInput,
@@ -61,13 +70,13 @@ const workerProfileUpdateSelect =
 const handshakeSelect =
   "id, employer_profile_id, worker_profile_id, request_id, status, matched_at, completed_at, cancelled_at, created_at, updated_at";
 const notificationSelect =
-  "id, profile_id, type, title, body, data, read_at, created_at";
+  "id, profile_id, type, title, body, data, dedupe_key, read_at, created_at";
 const workerProfileRowSelect =
   "id, profile_id, category_id, full_name, phone, location, county, town, profile_photo_path, years_experience, experience_months, experience_started_at, short_bio, work_experience, skills, extra_specialty_ids, featured_rank, compensation_model, salary_expectation, commission_expectation, verification_status, availability_status, is_suspended, public_visible, created_at, updated_at";
 const employerProfileSelect =
-  "id, profile_id, business_name, contact_person, phone, business_email, description, location, address_line, latitude, longitude, profile_image_path, salon_info, is_suspended, created_at, updated_at";
+  "id, profile_id, business_name, contact_person, phone, business_email, description, location, county, town, address_line, latitude, longitude, profile_image_path, salon_info, category_id, extra_specialty_ids, is_suspended, created_at, updated_at";
 const publicEmployerProfileSelect =
-  "id, business_name, description, location, address_line, profile_image_path, salon_info, created_at, updated_at";
+  "id, business_name, phone, business_email, description, location, county, town, address_line, profile_image_path, salon_info, category_id, category_name, category_slug, extra_specialty_ids, extra_specialty_names, created_at, updated_at";
 const portfolioSelect =
   "id, worker_profile_id, storage_bucket, storage_path, display_order, alt_text, created_at, updated_at";
 const publicPortfolioSelect = portfolioSelect;
@@ -147,6 +156,10 @@ export type AdminProfileUpdateRequest = AdminWorkerProfileUpdate & {
   > | null;
 };
 export type EmployerProfile = Tables<"employer_profiles">;
+export type EmployerWithSpecialties = EmployerProfile & {
+  category_name: string | null;
+  extra_specialty_names: string[];
+};
 export type EmployerRequest = Tables<"employer_requests">;
 export type Handshake = Tables<"handshakes">;
 export type Category = Tables<"categories">;
@@ -158,7 +171,13 @@ export type CompanyContact = Pick<
 export type WorkerRequestWithEmployer = EmployerRequest & {
   employer: Pick<
     EmployerProfile,
-    "id" | "business_name" | "description" | "location" | "profile_image_path"
+    | "id"
+    | "business_name"
+    | "description"
+    | "location"
+    | "county"
+    | "town"
+    | "profile_image_path"
   > | null;
 };
 
@@ -291,6 +310,9 @@ export async function approveWorker(input: AdminWorkerDecisionInput) {
   });
 
   normalizeError(error);
+  await deliverPushForWorkerApplicationEvent(parsed.workerProfileId, [
+    "application_approved",
+  ]);
 }
 
 export async function rejectWorker(input: AdminWorkerDecisionInput) {
@@ -304,6 +326,9 @@ export async function rejectWorker(input: AdminWorkerDecisionInput) {
   });
 
   normalizeError(error);
+  await deliverPushForWorkerApplicationEvent(parsed.workerProfileId, [
+    "application_rejected",
+  ]);
 }
 
 export async function suspendWorker(input: AdminWorkerDecisionInput) {
@@ -431,11 +456,15 @@ export async function createEmployerProfile(input: EmployerProfileInput) {
     p_business_email: parsed.businessEmail ?? null,
     p_description: parsed.description ?? null,
     p_location: parsed.location ?? null,
+    p_county: parsed.county,
+    p_town: parsed.town,
     p_address_line: parsed.addressLine ?? null,
     p_latitude: parsed.latitude ?? null,
     p_longitude: parsed.longitude ?? null,
     p_profile_image_path: parsed.profileImagePath ?? null,
     p_salon_info: parsed.salonInfo as Json,
+    p_category_id: parsed.categoryId,
+    p_extra_specialty_ids: parsed.extraSpecialtyIds,
   });
 
   normalizeError(error);
@@ -490,6 +519,9 @@ export async function requestWorker(input: RequestWorkerInput) {
   }
 
   normalizeError(error);
+  if (data) {
+    await deliverPushForRequestEvent(data, ["employer_request_received"]);
+  }
   return data;
 }
 
@@ -506,6 +538,14 @@ export async function respondToWorkerRequest(
   });
 
   normalizeError(error);
+  await deliverPushForRequestEvent(
+    parsed.requestId,
+    parsed.response === "accepted"
+      ? ["request_accepted", "handshake_completed"]
+      : parsed.response === "considering"
+        ? ["request_considered"]
+        : ["request_declined"],
+  );
   return data;
 }
 
@@ -726,7 +766,27 @@ export async function recordWorkerProfileView(workerProfileId: string) {
   });
 
   normalizeError(error);
+  if (data) {
+    await deliverPushForProfileViewActivity(parsedWorkerProfileId);
+  }
   return data;
+}
+
+export async function recordPushCampaignProfileVisit(
+  workerProfileId: string,
+  campaignId: string,
+) {
+  const parsedWorkerProfileId = uuidSchema.parse(workerProfileId);
+  const parsedCampaignId = uuidSchema.parse(campaignId);
+  const supabase = await createClient();
+  const { error } = await supabase.rpc(
+    "bc_record_push_campaign_profile_visit",
+    {
+      p_campaign_id: parsedCampaignId,
+      p_worker_profile_id: parsedWorkerProfileId,
+    },
+  );
+  normalizeError(error);
 }
 
 export async function getWorkerProfileAnalytics(): Promise<WorkerProfileAnalytics> {
@@ -919,7 +979,9 @@ async function getWorkerRequestsForProfile(
   ];
   const { data: employers, error: employerError } = await supabase
     .from("public_employer_profiles")
-    .select("id, business_name, description, location, profile_image_path")
+    .select(
+      "id, business_name, description, location, county, town, profile_image_path",
+    )
     .in("id", employerIds);
 
   normalizeError(employerError);
@@ -958,7 +1020,9 @@ export async function getCurrentWorkerRequestForEmployer(
 
   const { data: employer, error: employerError } = await supabase
     .from("public_employer_profiles")
-    .select("id, business_name, description, location, profile_image_path")
+    .select(
+      "id, business_name, description, location, county, town, profile_image_path",
+    )
     .eq("id", parsedEmployerProfileId)
     .maybeSingle();
   normalizeError(employerError);
@@ -1033,7 +1097,9 @@ export async function getWorkerStatusPage(page = 1): Promise<WorkerStatusPage> {
   const [employerResult, handshakeResult] = await Promise.all([
     supabase
       .from("public_employer_profiles")
-      .select("id, business_name, description, location, profile_image_path")
+      .select(
+        "id, business_name, description, location, county, town, profile_image_path",
+      )
       .in("id", employerIds),
     supabase
       .from("handshakes")
@@ -1521,6 +1587,9 @@ export async function approveWorkerProfileUpdate(updateId: string) {
     p_update_id: parsedUpdateId,
   });
   normalizeError(error);
+  await deliverPushForWorkerProfileUpdateEvent(parsedUpdateId, [
+    "application_approved",
+  ]);
 }
 
 export async function rejectWorkerProfileUpdate(
@@ -1537,6 +1606,9 @@ export async function rejectWorkerProfileUpdate(
     p_reason: parsedReason ?? null,
   });
   normalizeError(error);
+  await deliverPushForWorkerProfileUpdateEvent(parsedUpdateId, [
+    "application_rejected",
+  ]);
 }
 
 export async function getAdminEmailWhitelist() {
@@ -1660,24 +1732,57 @@ export async function getFeaturedWorkers(): Promise<WorkerMarketplaceItem[]> {
 
 export async function getAdminEmployers() {
   const { supabase } = await getAuthContext();
-  const { data, error } = await supabase
-    .from("employer_profiles")
-    .select(employerProfileSelect)
-    .order("created_at", { ascending: false })
-    .limit(100);
+  const [{ data, error }, { data: categories, error: categoriesError }] =
+    await Promise.all([
+      supabase
+        .from("employer_profiles")
+        .select(employerProfileSelect)
+        .order("created_at", { ascending: false })
+        .limit(100),
+      supabase.from("categories").select("id, name"),
+    ]);
   normalizeError(error);
-  return data ?? [];
+  normalizeError(categoriesError);
+  const categoryNames = new Map(
+    (categories ?? []).map((category) => [category.id, category.name]),
+  );
+  return (data ?? []).map((employer) => ({
+    ...employer,
+    category_name: employer.category_id
+      ? (categoryNames.get(employer.category_id) ?? null)
+      : null,
+    extra_specialty_names: employer.extra_specialty_ids
+      .map((specialtyId) => categoryNames.get(specialtyId))
+      .filter((name): name is string => Boolean(name)),
+  }));
 }
 
 export async function getAdminEmployer(employerProfileId: string) {
   const { supabase } = await getAuthContext();
-  const { data, error } = await supabase
-    .from("employer_profiles")
-    .select(employerProfileSelect)
-    .eq("id", employerProfileId)
-    .maybeSingle();
+  const [{ data, error }, { data: categories, error: categoriesError }] =
+    await Promise.all([
+      supabase
+        .from("employer_profiles")
+        .select(employerProfileSelect)
+        .eq("id", employerProfileId)
+        .maybeSingle(),
+      supabase.from("categories").select("id, name"),
+    ]);
   normalizeError(error);
-  return data;
+  normalizeError(categoriesError);
+  if (!data) return null;
+  const categoryNames = new Map(
+    (categories ?? []).map((category) => [category.id, category.name]),
+  );
+  return {
+    ...data,
+    category_name: data.category_id
+      ? (categoryNames.get(data.category_id) ?? null)
+      : null,
+    extra_specialty_names: data.extra_specialty_ids
+      .map((specialtyId) => categoryNames.get(specialtyId))
+      .filter((name): name is string => Boolean(name)),
+  };
 }
 
 export async function getAdminHandshakes() {
@@ -1894,6 +1999,62 @@ export async function getNotifications(): Promise<Notification[]> {
 
   normalizeError(error);
   return data ?? [];
+}
+
+export async function getUnreadNotificationCount(): Promise<number> {
+  const supabase = await createClient();
+  const user = await requireUser(supabase);
+
+  const { count, error } = await supabase
+    .from("notifications")
+    .select("id", { count: "exact", head: true })
+    .eq("profile_id", user.id)
+    .is("read_at", null);
+
+  normalizeError(error);
+  return count ?? 0;
+}
+
+export async function registerPushSubscription(input: PushSubscriptionInput) {
+  const parsed = pushSubscriptionSchema.parse(input);
+  const { supabase, userId, profile } = await getAuthContext();
+
+  if (!profile?.role || profile.role === "admin") {
+    throw new DomainError(
+      "Choose a Worker or Employer role before enabling push notifications.",
+    );
+  }
+
+  const { data, error } = await supabase
+    .from("notification_push_subscriptions")
+    .upsert(
+      {
+        profile_id: userId,
+        endpoint: parsed.endpoint,
+        p256dh: parsed.keys.p256dh,
+        auth: parsed.keys.auth,
+        last_seen_at: new Date().toISOString(),
+      },
+      { onConflict: "profile_id,endpoint" },
+    )
+    .select("id, endpoint")
+    .single();
+
+  normalizeError(error);
+  return data;
+}
+
+export async function removePushSubscription(endpoint: string) {
+  const parsed = pushSubscriptionEndpointSchema.parse({ endpoint });
+  const { supabase, userId } = await getAuthContext();
+
+  const { error } = await supabase
+    .from("notification_push_subscriptions")
+    .delete()
+    .eq("profile_id", userId)
+    .eq("endpoint", parsed.endpoint);
+
+  normalizeError(error);
 }
 
 export async function markNotificationRead(input: { notificationId: string }) {

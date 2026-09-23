@@ -7,6 +7,9 @@ import {
   removeEmployerGalleryImage,
   createWorkerApplication,
   markNotificationRead,
+  getUnreadNotificationCount,
+  registerPushSubscription,
+  removePushSubscription,
   rejectWorker,
   restoreEmployer,
   restoreWorker,
@@ -25,6 +28,7 @@ import {
   removeAdminEmail,
   setFeaturedWorkers,
   recordWorkerProfileView,
+  recordPushCampaignProfileVisit,
   requestWorkerReactivation,
   approveWorkerReactivation,
   declineWorkerReactivation,
@@ -34,6 +38,16 @@ import {
   updateCompanyContact,
   verifyAccountPassword,
 } from "@/lib/domain/beauty-connect";
+import {
+  cancelPushCampaign,
+  createAndActivatePushCampaign,
+  createPushCampaignDraft,
+  duplicatePushCampaign,
+  pausePushCampaign,
+  previewPushCampaignAudience,
+  resumePushCampaign,
+  searchPushCampaignWorkers,
+} from "@/lib/domain/push-campaigns";
 import type {
   AdminEmployerDecisionInput,
   AdminWorkerDecisionInput,
@@ -44,6 +58,7 @@ import type {
   WorkerReviewedProfileInput,
   WorkerApplicationInput,
   WorkerApplicationSubmissionInput,
+  PushSubscriptionInput,
   WorkerReactivationRequestInput,
 } from "@/lib/validations/beauty-connect";
 import { createClient } from "@/lib/supabase/server";
@@ -54,6 +69,7 @@ import type {
   CompanyContactInput,
   FeaturedWorkerIdsInput,
 } from "@/lib/validations/admin";
+import type { PushCampaignInput } from "@/lib/validations/push-campaign";
 
 export async function createWorkerApplicationAction(
   input: WorkerApplicationSubmissionInput,
@@ -116,8 +132,51 @@ export async function setFeaturedWorkersAction(
   return setFeaturedWorkers(workerProfileIds);
 }
 
+export async function createPushCampaignDraftAction(input: PushCampaignInput) {
+  return createPushCampaignDraft(input);
+}
+
+export async function createAndActivatePushCampaignAction(
+  input: PushCampaignInput,
+) {
+  return createAndActivatePushCampaign(input);
+}
+
+export async function previewPushCampaignAudienceAction(
+  input: PushCampaignInput,
+) {
+  return previewPushCampaignAudience(input);
+}
+
+export async function searchPushCampaignWorkersAction(search: string) {
+  return searchPushCampaignWorkers(search);
+}
+
+export async function pausePushCampaignAction(campaignId: string) {
+  return pausePushCampaign(campaignId);
+}
+
+export async function resumePushCampaignAction(campaignId: string) {
+  return resumePushCampaign(campaignId);
+}
+
+export async function cancelPushCampaignAction(campaignId: string) {
+  return cancelPushCampaign(campaignId);
+}
+
+export async function duplicatePushCampaignAction(campaignId: string) {
+  return duplicatePushCampaign(campaignId);
+}
+
 export async function recordWorkerProfileViewAction(workerProfileId: string) {
   return recordWorkerProfileView(workerProfileId);
+}
+
+export async function recordPushCampaignProfileVisitAction(
+  workerProfileId: string,
+  campaignId: string,
+) {
+  return recordPushCampaignProfileVisit(workerProfileId, campaignId);
 }
 
 export async function approveWorkerAction(input: AdminWorkerDecisionInput) {
@@ -208,6 +267,20 @@ export async function rejectWorkerProfileUpdateAction(
 
 export async function markNotificationReadAction(notificationId: string) {
   return markNotificationRead({ notificationId });
+}
+
+export async function getUnreadNotificationCountAction() {
+  return getUnreadNotificationCount();
+}
+
+export async function registerPushSubscriptionAction(
+  input: PushSubscriptionInput,
+) {
+  return registerPushSubscription(input);
+}
+
+export async function removePushSubscriptionAction(endpoint: string) {
+  return removePushSubscription(endpoint);
 }
 
 export async function setRoleAction(role: "worker" | "employer") {

@@ -1,5 +1,6 @@
 "use client";
 
+import { useRouter } from "next/navigation";
 import { useState } from "react";
 import { markNotificationReadAction } from "@/app/actions/beauty-connect";
 import type { Notification } from "@/lib/domain/beauty-connect";
@@ -11,6 +12,7 @@ export function NotificationList({
 }: {
   notifications: Notification[];
 }) {
+  const router = useRouter();
   const [items, setItems] = useState(notifications);
   async function mark(id: string) {
     await markNotificationReadAction(id);
@@ -19,6 +21,13 @@ export function NotificationList({
         item.id === id ? { ...item, read_at: new Date().toISOString() } : item,
       ),
     );
+    window.dispatchEvent(new Event("beauty-connect:notifications-changed"));
+  }
+
+  async function open(notification: Notification) {
+    if (!notification.read_at) await mark(notification.id);
+    const url = getNotificationUrl(notification.data);
+    if (url) router.push(url);
   }
   if (!items.length)
     return (
@@ -39,21 +48,30 @@ export function NotificationList({
           }
         >
           <div className="flex items-start justify-between gap-4">
-            <div>
+            <button
+              type="button"
+              onClick={() => void open(notification)}
+              className="min-w-0 flex-1 text-left focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-foreground/30 focus-visible:ring-offset-2"
+            >
               <p className="text-xs text-muted-foreground">
                 {formatDate(notification.created_at)}
               </p>
               <h2 className="mt-2 font-semibold">{notification.title}</h2>
-            </div>
+              {notification.body ? (
+                <p className="mt-2 text-sm leading-6 text-muted-foreground">
+                  {notification.body}
+                </p>
+              ) : null}
+              {getNotificationUrl(notification.data) ? (
+                <span className="mt-3 inline-block text-xs font-semibold text-foreground underline underline-offset-4">
+                  Open related activity
+                </span>
+              ) : null}
+            </button>
             {notification.read_at ? null : (
               <span className="size-2 rounded-full bg-foreground" />
             )}
           </div>
-          {notification.body ? (
-            <p className="mt-2 text-sm leading-6 text-muted-foreground">
-              {notification.body}
-            </p>
-          ) : null}
           {notification.read_at ? null : (
             <Button
               type="button"
@@ -68,4 +86,19 @@ export function NotificationList({
       ))}
     </div>
   );
+}
+
+function getNotificationUrl(data: Notification["data"]): string | null {
+  if (
+    data &&
+    typeof data === "object" &&
+    !Array.isArray(data) &&
+    typeof data.url === "string" &&
+    data.url.startsWith("/") &&
+    !data.url.startsWith("//")
+  ) {
+    return data.url;
+  }
+
+  return null;
 }
