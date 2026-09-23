@@ -3,8 +3,8 @@ import { processDuePushCampaignDeliveries } from "@/lib/server/push-campaign-sch
 
 export async function GET(request: Request) {
   const cronSecret = process.env.CRON_SECRET;
-  const authorization = request.headers.get("authorization");
-  if (!cronSecret || authorization !== `Bearer ${cronSecret}`) {
+  const providedSecret = request.headers.get("x-cron-secret");
+  if (!cronSecret || providedSecret !== cronSecret) {
     return NextResponse.json({ message: "Unauthorized." }, { status: 401 });
   }
 
