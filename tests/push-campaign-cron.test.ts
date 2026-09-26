@@ -4,6 +4,7 @@ const processDuePushCampaignDeliveries = vi.hoisted(() => vi.fn());
 
 vi.mock("@/lib/server/push-campaign-scheduler", () => ({
   processDuePushCampaignDeliveries,
+  PushCampaignSchedulerError: class PushCampaignSchedulerError extends Error {},
 }));
 
 import { GET } from "@/app/api/cron/push-campaigns/route";
@@ -63,6 +64,23 @@ describe("push campaign cron endpoint", () => {
       failed: 0,
     });
     expect(processDuePushCampaignDeliveries).toHaveBeenCalledOnce();
+  });
+
+  it("does not expose scheduler error details to the caller", async () => {
+    processDuePushCampaignDeliveries.mockRejectedValue(
+      new Error("production database error"),
+    );
+
+    const response = await GET(
+      new Request("http://localhost/api/cron/push-campaigns", {
+        headers: { "X-Cron-Secret": "test-cron-secret" },
+      }),
+    );
+
+    expect(response.status).toBe(500);
+    await expect(response.json()).resolves.toEqual({
+      message: "Campaign scheduler failed.",
+    });
   });
 
   it("rejects requests when the server secret is not configured", async () => {
