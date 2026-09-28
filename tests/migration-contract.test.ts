@@ -87,6 +87,13 @@ const pushCampaignMigration = readFileSync(
   join(process.cwd(), "supabase/migrations/20260923110000_push_campaigns.sql"),
   "utf8",
 );
+const pushCampaignClaimFixMigration = readFileSync(
+  join(
+    process.cwd(),
+    "supabase/migrations/20260928100000_fix_push_campaign_claim_ambiguity.sql",
+  ),
+  "utf8",
+);
 const serviceWorker = readFileSync(join(process.cwd(), "public/sw.js"), "utf8");
 
 describe("Supabase migration contract", () => {
@@ -447,6 +454,18 @@ describe("Supabase migration contract", () => {
       "bc_record_push_campaign_profile_visit",
     );
     expect(pushCampaignMigration).not.toContain("min(category.id)");
+  });
+
+  it("qualifies the campaign claim function's campaign_id source column", () => {
+    expect(pushCampaignClaimFixMigration).toContain(
+      "select stale.id, stale.campaign_id",
+    );
+    expect(pushCampaignClaimFixMigration).toContain(
+      "from public.push_campaign_deliveries as stale",
+    );
+    expect(pushCampaignClaimFixMigration).toContain(
+      "grant execute on function public.bc_claim_push_campaign_deliveries(integer)",
+    );
   });
 
   it("keeps push clicks authenticated and same-origin", () => {
