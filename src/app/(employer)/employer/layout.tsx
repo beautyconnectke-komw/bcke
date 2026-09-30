@@ -30,7 +30,13 @@ export default async function EmployerLayout({
     if (error instanceof AuthenticationRequiredError) redirect("/login");
     return (
       <main className="mx-auto max-w-3xl px-5 py-16">
-        <SetupState />
+        <SetupState
+          detail={
+            error instanceof Error
+              ? error.message
+              : "The employer area could not be loaded."
+          }
+        />
       </main>
     );
   }

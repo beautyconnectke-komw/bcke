@@ -1,5 +1,6 @@
 import Link from "next/link";
 import type { ReactNode } from "react";
+import { env } from "@/config/env";
 import { cn } from "@/lib/utils";
 
 export function Button({
@@ -145,13 +146,20 @@ export function ErrorState({
 }
 
 export function SetupState({ detail }: { detail?: string } = {}) {
+  const isConfigured = env.supabase.isConfigured;
+
   return (
     <EmptyState
-      title="Supabase is not connected"
+      title={
+        isConfigured
+          ? "We could not load this page"
+          : "Supabase is not connected"
+      }
       description={
-        detail && process.env.NODE_ENV === "development"
-          ? detail
-          : "Add NEXT_PUBLIC_SUPABASE_URL and NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY to .env.local, then refresh this page."
+        detail ??
+        (isConfigured
+          ? "The server could not load the requested data. Please try again, or check the deployment logs."
+          : "Configure NEXT_PUBLIC_SUPABASE_URL and NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY in the deployment environment, then redeploy.")
       }
     />
   );

@@ -39,7 +39,15 @@ export default async function WorkerOnboardingPage() {
         </div>
       </div>
     );
-  } catch {
-    return <SetupState />;
+  } catch (error) {
+    return (
+      <SetupState
+        detail={
+          error instanceof Error
+            ? error.message
+            : "The worker profile could not be loaded."
+        }
+      />
+    );
   }
 }

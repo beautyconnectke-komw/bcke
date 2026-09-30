@@ -3,20 +3,29 @@
 import { useRouter } from "next/navigation";
 import { BriefcaseBusiness, Scissors } from "lucide-react";
 import { useState } from "react";
+import { setRoleAction } from "@/app/actions/beauty-connect";
 
 export function RoleSelector() {
   const router = useRouter();
   const [error, setError] = useState<string | null>(null);
   const [busy, setBusy] = useState<string | null>(null);
-  function choose(role: "worker" | "employer") {
+  async function choose(role: "worker" | "employer") {
     setBusy(role);
     setError(null);
-    // Role selection only chooses the onboarding path. The authoritative role
-    // assignment remains in the worker/employer submit RPC, so avoid an extra
-    // auth/profile round-trip before navigation.
-    router.push(
-      role === "worker" ? "/worker/onboarding" : "/employer/onboarding",
-    );
+    try {
+      // Create the deferred profile row first. The onboarding submit RPC will
+      // assign the permanent worker/employer role after the form is complete.
+      await setRoleAction(role);
+      router.push(
+        role === "worker" ? "/worker/onboarding" : "/employer/onboarding",
+      );
+      router.refresh();
+    } catch (caught) {
+      setError(
+        caught instanceof Error ? caught.message : "Could not save your role.",
+      );
+      setBusy(null);
+    }
   }
   return (
     <div className="grid gap-4 sm:grid-cols-2">

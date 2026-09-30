@@ -4,7 +4,7 @@ import type { SupabaseClient } from "@supabase/supabase-js";
 import { cache } from "react";
 import { createClient } from "@/lib/supabase/server";
 import type { Database, Tables } from "@/types/database";
-import { AuthenticationRequiredError } from "./errors";
+import { AuthenticationRequiredError, DomainError } from "./errors";
 
 type BeautyConnectClient = SupabaseClient<Database, "public">;
 
@@ -26,11 +26,15 @@ export const getAuthContext = cache(async (): Promise<AuthContext> => {
     throw new AuthenticationRequiredError();
   }
 
-  const { data: profile } = await supabase
+  const { data: profile, error: profileError } = await supabase
     .from("profiles")
     .select(authProfileSelect)
     .eq("id", userId)
     .maybeSingle();
+
+  if (profileError) {
+    throw new DomainError(profileError.message, profileError);
+  }
 
   return {
     supabase,
@@ -47,11 +51,15 @@ export async function getOptionalAuthContext() {
   const userId = claims?.sub;
   if (typeof userId !== "string") return null;
 
-  const { data: profile } = await supabase
+  const { data: profile, error: profileError } = await supabase
     .from("profiles")
     .select(authProfileSelect)
     .eq("id", userId)
     .maybeSingle();
+
+  if (profileError) {
+    throw new DomainError(profileError.message, profileError);
+  }
 
   return { supabase, userId, profile };
 }
