@@ -264,7 +264,7 @@ export default function Home() {
             aria-hidden="true"
           />
           <Handshake className={styles.ctaIcon} size={36} strokeWidth={1.8} />
-          <h2>Ready to elevate your beauty career or studio?</h2>
+          <h2>Ready to elevate your beauty career or salon?</h2>
           <p>
             Join hundreds of hired professionals &amp; salons that hire
             professionals seamlessly on Beauty Connect.

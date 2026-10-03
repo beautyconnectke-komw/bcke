@@ -14,7 +14,18 @@ describe("Beauty Connect input validation", () => {
 
     expect(parsed.yearsExperience).toBe(0);
     expect(parsed.skills).toEqual([]);
-    expect(parsed.compensationModel).toBe("negotiable");
+    expect(parsed.compensationModel).toBe("salary");
+  });
+
+  it("accepts only the supported worker payment preferences", () => {
+    for (const compensationModel of ["hourly", "negotiable"]) {
+      expect(() =>
+        workerApplicationSchema.parse({
+          fullName: "Amina Rose",
+          compensationModel,
+        }),
+      ).toThrow();
+    }
   });
 
   it("rejects invalid worker request responses", () => {

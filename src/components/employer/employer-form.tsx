@@ -22,7 +22,7 @@ import { Button } from "@/components/shared/ui";
 
 type FormValues = Omit<
   EmployerProfileInput,
-  "salonInfo" | "county" | "town" | "categoryId"
+  "salonInfo" | "location" | "county" | "town" | "categoryId"
 > & {
   county: string;
   town: string;
@@ -64,9 +64,8 @@ export function EmployerForm({
       contactPerson: profile?.contact_person ?? "",
       phone: profile?.phone ?? "",
       businessEmail: profile?.business_email ?? "",
-      location: profile?.location ?? "",
       county: getSupportedCounty(profile?.county),
-      town: profile?.town ?? "",
+      town: profile?.town ?? profile?.location ?? "",
       addressLine: profile?.address_line ?? "",
       description: profile?.description ?? "",
       profileImagePath: profile?.profile_image_path ?? null,
@@ -167,7 +166,6 @@ export function EmployerForm({
         phone: values.phone || null,
         businessEmail: values.businessEmail || null,
         description: values.description || null,
-        location: values.location || null,
         county: values.county,
         town: values.town,
         addressLine: values.addressLine || null,
@@ -233,7 +231,11 @@ export function EmployerForm({
               {profile?.business_name}
             </h2>
             <p className="mt-1 truncate text-sm text-muted-foreground">
-              {[profile?.location, profile?.address_line]
+              {[
+                profile?.town ?? profile?.location,
+                profile?.county,
+                profile?.address_line,
+              ]
                 .filter(Boolean)
                 .join(" · ") || "Location not added"}
             </p>
@@ -269,16 +271,6 @@ export function EmployerForm({
             placeholder="Your name"
           />
         </Field>
-        <Field
-          label="Existing location detail"
-          hint="This preserves the previous free-text location while county and town provide structured targeting data."
-        >
-          <input
-            {...register("location")}
-            className="field"
-            placeholder="Optional area or location detail"
-          />
-        </Field>
         <Field label="County">
           <select required {...register("county")} className="field">
             <option value="">Choose your county</option>
@@ -289,19 +281,22 @@ export function EmployerForm({
             ))}
           </select>
         </Field>
-        <Field label="Town">
+        <Field
+          label="Town"
+          hint="Use the town or area where your salon is based."
+        >
           <input
             required
             {...register("town")}
             className="field"
-            placeholder="Your town"
+            placeholder="e.g. Westlands"
           />
         </Field>
-        <Field label="Address">
+        <Field label="Address or landmark" hint="Optional">
           <input
             {...register("addressLine")}
             className="field"
-            placeholder="Street or neighbourhood"
+            placeholder="Street, building, or nearby landmark"
           />
         </Field>
       </section>
@@ -345,54 +340,50 @@ export function EmployerForm({
         <div>
           <h2 className="text-lg font-semibold">Salon specialities</h2>
           <p className="mt-1 text-sm text-muted-foreground">
-            Choose from the same admin-managed speciality catalogue used by
-            workers. Your main speciality is excluded from extra specialities.
+            Choose one main speciality and any additional specialities from the
+            same admin-managed catalogue used by workers.
           </p>
         </div>
-        <Field label="Main speciality">
-          <select required {...categoryField} className="field">
-            <option value="">Choose a speciality</option>
-            {categories.map((category) => (
-              <option key={category.id} value={category.id}>
-                {category.name}
-              </option>
-            ))}
-          </select>
-        </Field>
-        <Field label="Extra specialities">
-          <div className="grid gap-2 sm:grid-cols-2">
-            {extraCategories.map((category) => {
-              const isSelected = selectedExtraSpecialtyIds.includes(
-                category.id,
-              );
-              const reachedLimit =
-                selectedExtraSpecialtyIds.length >= 12 && !isSelected;
-              return (
-                <label
-                  key={category.id}
-                  className={`flex min-h-12 items-center gap-3 border px-3 py-3 text-sm transition ${
-                    isSelected
-                      ? "border-foreground bg-foreground text-background"
-                      : "border-border bg-background hover:border-foreground"
-                  } ${reachedLimit ? "cursor-not-allowed opacity-50" : "cursor-pointer"}`}
-                >
-                  <input
-                    type="checkbox"
-                    value={category.id}
-                    {...register("extraSpecialtyIds")}
-                    disabled={reachedLimit}
-                    className="size-4 accent-current"
-                  />
-                  <span>{category.name}</span>
-                </label>
-              );
-            })}
-          </div>
-          <p className="text-xs text-muted-foreground">
-            {selectedExtraSpecialtyIds.length} of 12 extra specialities
-            selected.
-          </p>
-        </Field>
+        <div className="grid gap-2 sm:grid-cols-2">
+          <Field label="Main speciality">
+            <select required {...categoryField} className="field">
+              <option value="">Choose a speciality</option>
+              {categories.map((category) => (
+                <option key={category.id} value={category.id}>
+                  {category.name}
+                </option>
+              ))}
+            </select>
+          </Field>
+          {extraCategories.map((category) => {
+            const isSelected = selectedExtraSpecialtyIds.includes(category.id);
+            const reachedLimit =
+              selectedExtraSpecialtyIds.length >= 12 && !isSelected;
+            return (
+              <label
+                key={category.id}
+                className={`flex min-h-12 items-center gap-3 border px-3 py-3 text-sm transition ${
+                  isSelected
+                    ? "border-foreground bg-foreground text-background"
+                    : "border-border bg-background hover:border-foreground"
+                } ${reachedLimit ? "cursor-not-allowed opacity-50" : "cursor-pointer"}`}
+              >
+                <input
+                  type="checkbox"
+                  value={category.id}
+                  {...register("extraSpecialtyIds")}
+                  disabled={reachedLimit}
+                  className="size-4 accent-current"
+                />
+                <span>{category.name}</span>
+              </label>
+            );
+          })}
+        </div>
+        <p className="text-xs text-muted-foreground">
+          {selectedExtraSpecialtyIds.length} of 12 additional specialities
+          selected.
+        </p>
         {getLegacyServices(profile?.salon_info) ? (
           <div className="border border-dashed border-border bg-muted/30 p-3 text-sm text-muted-foreground">
             <p className="font-medium text-foreground">

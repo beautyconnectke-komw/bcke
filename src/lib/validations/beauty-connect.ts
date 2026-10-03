@@ -11,8 +11,6 @@ export const compensationModelSchema = z.enum([
   "salary",
   "commission",
   "salary_plus_commission",
-  "hourly",
-  "negotiable",
 ]);
 
 export const workerRequestResponseSchema = z.enum([
@@ -35,7 +33,7 @@ export const workerApplicationSchema = z.object({
   workExperience: z.string().trim().max(5000).nullable().optional(),
   skills: z.array(z.string().trim().min(1).max(80)).max(30).default([]),
   extraSpecialtyIds: z.array(uuidSchema).max(12).default([]),
-  compensationModel: compensationModelSchema.default("negotiable"),
+  compensationModel: compensationModelSchema.default("salary"),
   salaryExpectation: z.number().nonnegative().nullable().optional(),
   commissionExpectation: z.number().min(0).max(100).nullable().optional(),
 });

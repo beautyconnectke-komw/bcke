@@ -80,7 +80,9 @@ export function WorkerForm({
       experienceMonths: profile?.experience_months ?? 0,
       shortBio: profile?.short_bio ?? "",
       extraSpecialtyIds: profile?.extra_specialty_ids ?? [],
-      compensationModel: profile?.compensation_model ?? "negotiable",
+      compensationModel: getSupportedCompensationModel(
+        profile?.compensation_model,
+      ),
       salaryExpectation: profile?.salary_expectation ?? null,
       commissionExpectation: profile?.commission_expectation ?? null,
     },
@@ -95,8 +97,7 @@ export function WorkerForm({
   );
   const showsSalary =
     compensationModel === "salary" ||
-    compensationModel === "salary_plus_commission" ||
-    compensationModel === "hourly";
+    compensationModel === "salary_plus_commission";
   const showsCommission =
     compensationModel === "commission" ||
     compensationModel === "salary_plus_commission";
@@ -157,11 +158,9 @@ export function WorkerForm({
         (mode === "onboarding" || intent === "reviewed") && photo
           ? await upload(photo, "worker-profile-images", user.id, "profile")
           : values.profilePhotoPath;
-      const salaryExpectation = [
-        "salary",
-        "salary_plus_commission",
-        "hourly",
-      ].includes(values.compensationModel)
+      const salaryExpectation = ["salary", "salary_plus_commission"].includes(
+        values.compensationModel,
+      )
         ? values.salaryExpectation
         : null;
       const commissionExpectation = [
@@ -733,19 +732,13 @@ export function WorkerForm({
         </div>
         <Field label="Payment preference">
           <select {...register("compensationModel")} className="field">
-            <option value="negotiable">Negotiable</option>
             <option value="salary">Salary</option>
             <option value="commission">Commission only</option>
             <option value="salary_plus_commission">Salary + commission</option>
-            <option value="hourly">Hourly</option>
           </select>
         </Field>
         {showsSalary ? (
-          <Field
-            label={
-              compensationModel === "hourly" ? "Hourly amount" : "Salary amount"
-            }
-          >
+          <Field label="Salary amount">
             <input
               type="number"
               min="0"
@@ -877,4 +870,14 @@ function ReadOnlyValue({ label, value }: { label: string; value: string }) {
       <p className="mt-1 text-sm font-medium">{value}</p>
     </div>
   );
+}
+
+function getSupportedCompensationModel(
+  value: Tables<"worker_profiles">["compensation_model"] | null | undefined,
+): WorkerApplicationInput["compensationModel"] {
+  return value === "salary" ||
+    value === "commission" ||
+    value === "salary_plus_commission"
+    ? value
+    : "salary";
 }

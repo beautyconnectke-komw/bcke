@@ -75,8 +75,7 @@ export default async function WorkerEmployerDetailPage({
                 {[
                   employer.town,
                   employer.county,
-                  employer.location,
-                  employer.address_line,
+                  employer.address_line || employer.location,
                 ]
                   .filter(Boolean)
                   .join(", ") || "Location not shared"}

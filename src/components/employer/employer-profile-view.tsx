@@ -44,8 +44,7 @@ export function EmployerProfileView({
   const location = [
     profile.town,
     profile.county,
-    profile.location,
-    profile.address_line,
+    profile.address_line || profile.location,
   ]
     .filter(Boolean)
     .join(" · ");
