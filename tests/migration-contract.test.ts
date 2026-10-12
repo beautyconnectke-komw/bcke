@@ -76,6 +76,13 @@ const notificationIntegrityFixesMigration = readFileSync(
   ),
   "utf8",
 );
+const notificationProfileIdFixMigration = readFileSync(
+  join(
+    process.cwd(),
+    "supabase/migrations/20261012100000_fix_notification_profile_id_ambiguity.sql",
+  ),
+  "utf8",
+);
 const employerTargetingMigration = readFileSync(
   join(
     process.cwd(),
@@ -371,6 +378,15 @@ describe("Supabase migration contract", () => {
     );
     expect(notificationIntegrityFixesMigration).toContain(
       "create or replace function public.bc_reject_worker",
+    );
+  });
+
+  it("qualifies the notification recipient insert source", () => {
+    expect(notificationProfileIdFixMigration).toMatch(
+      /insert into public\.notifications[\s\S]+values \(\s+recipient_profile_id,/,
+    );
+    expect(notificationProfileIdFixMigration).not.toMatch(
+      /values \(\s+profile_id,/,
     );
   });
 
