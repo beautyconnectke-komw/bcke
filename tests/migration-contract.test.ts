@@ -388,6 +388,12 @@ describe("Supabase migration contract", () => {
     expect(notificationProfileIdFixMigration).not.toMatch(
       /values \(\s+profile_id,/,
     );
+    expect(notificationProfileIdFixMigration).toContain(
+      "on conflict do nothing",
+    );
+    expect(notificationProfileIdFixMigration).not.toMatch(
+      /on conflict \(\s*profile_id\s*,\s*dedupe_key\s*\)/,
+    );
   });
 
   it("prepares employers for structured audience targeting without dropping legacy values", () => {

@@ -159,9 +159,10 @@ begin
     notification_data,
     notification_dedupe_key
   )
-  on conflict (profile_id, dedupe_key)
-    where dedupe_key is not null
-    do nothing
+  -- Do not name the conflict target here.  `profile_id` is also the
+  -- function parameter name, and PL/pgSQL can report that target as
+  -- ambiguous while compiling the statement.
+  on conflict do nothing
   returning id into notification_id;
 
   if notification_id is null and notification_dedupe_key is not null then
