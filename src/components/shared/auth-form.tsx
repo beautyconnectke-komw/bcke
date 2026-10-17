@@ -361,10 +361,18 @@ export function AuthForm({
             </p>
             <div className="mt-6 grid gap-3 sm:grid-cols-2">
               <a
-                href="googlegmail://"
+                href="https://mail.google.com/mail/u/0/#inbox"
+                onClick={(event) => {
+                  if (/Android/i.test(navigator.userAgent)) {
+                    event.preventDefault();
+                    window.location.assign(
+                      "intent://#Intent;scheme=googlegmail;package=com.google.android.gm;S.browser_fallback_url=https%3A%2F%2Fmail.google.com%2Fmail%2Fu%2F0%2F%23inbox;end",
+                    );
+                  }
+                }}
                 className="inline-flex min-h-11 items-center justify-center rounded-xl border border-[#dfe5dc] px-4 text-sm font-semibold text-[#1b1b1d] hover:border-[#035715] hover:text-[#035715] sm:hidden"
               >
-                Open Gmail app
+                Open Gmail
               </a>
               <a
                 href="https://mail.google.com/mail/u/0/#inbox"
